@@ -1,4 +1,5 @@
 """Player-related models."""
+
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -6,7 +7,7 @@ from typing import List, Optional
 @dataclass
 class PlayerDefinition:
     """Basic player definition."""
-    
+
     asset_id: int
     resource_id: int
     first_name: str
@@ -17,12 +18,12 @@ class PlayerDefinition:
     nation: Optional[int] = None
     league: Optional[int] = None
     team: Optional[int] = None
-    
+
 
 @dataclass
 class PlayerItem:
     """Player item with stats and attributes."""
-    
+
     id: int
     asset_id: int
     resource_id: int
@@ -41,11 +42,11 @@ class PlayerItem:
     suspension: Optional[int] = None
     injury: Optional[int] = None
     attributes: Optional[List[dict]] = None
-    
+
 
 @dataclass
 class PlayerListResponse:
     """Response containing list of players."""
-    
+
     players: List[PlayerDefinition]
     total_results: int

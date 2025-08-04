@@ -1,10 +1,11 @@
 """Constants and enums for FIFA Ultimate Team API."""
+
 from enum import Enum
 
 
 class Platform(Enum):
     """Gaming platforms supported by FIFA Ultimate Team."""
-    
+
     PS4 = "ps4"
     PS5 = "ps5"
     XBOX_ONE = "xboxone"
@@ -14,14 +15,14 @@ class Platform(Enum):
 
 class AppVersion(Enum):
     """Supported app versions for FIFA Ultimate Team."""
-    
+
     WEB_APP = "25.1.0"
     COMPANION_APP = "25.1.0"
 
 
 class AuctionDuration(Enum):
     """Auction duration options."""
-    
+
     ONE_HOUR = 3600
     THREE_HOURS = 10800
     SIX_HOURS = 21600
@@ -32,7 +33,7 @@ class AuctionDuration(Enum):
 
 class Position(Enum):
     """Player positions."""
-    
+
     GK = "GK"
     RWB = "RWB"
     RB = "RB"
@@ -54,7 +55,7 @@ class Position(Enum):
 
 class ChemistryStyle(Enum):
     """Chemistry styles for players."""
-    
+
     BASIC = 250
     SNIPER = 251
     FINISHER = 252
@@ -79,7 +80,7 @@ class ChemistryStyle(Enum):
 
 class ResourceId(Enum):
     """Resource identifiers."""
-    
+
     PLAYERS = 5002
     CONSUMABLES = 5003
     CLUB_ITEMS = 5004
@@ -93,49 +94,49 @@ class ResourceId(Enum):
 
 class Level(Enum):
     """Card levels."""
-    
+
     BRONZE = "bronze"
     SILVER = "silver"
     GOLD = "gold"
-    
+
 
 class ItemType(Enum):
     """Item types."""
-    
+
     PLAYER = "player"
     DEVELOPMENT = "development"
     TRAINING = "training"
     CONSUMABLES = "consumables"
     STAFF = "staff"
     STADIUM = "stadium"
-    
+
 
 class DevelopmentType(Enum):
     """Development item types."""
-    
+
     FITNESS = "fitness"
     INJURY_HEALING = "injury"
     CONTRACT = "contract"
     POSITION_CHANGE = "position"
-    
+
 
 class TrainingType(Enum):
     """Training item types."""
-    
+
     CHEMISTRY_STYLE = "playerstyle"
     MANAGER_LEAGUE = "managerleague"
-    
+
 
 class StaffType(Enum):
     """Staff types."""
-    
+
     MANAGER = "manager"
     HEAD_COACH = "headCoach"
-    
+
 
 class ClubInfoType(Enum):
     """Club info types."""
-    
+
     KITS = "kit"
     BADGES = "badge"
     STADIUMS = "stadium"
@@ -169,14 +170,15 @@ API_ENDPOINTS = {
     "trade_status": "/trade/status",
     "club_items": "/club/tradepile",
     "images": "/items/images",
-    "pack_open": "/purchased/items"
+    "pack_open": "/purchased/items",
 }
+
 
 def get_base_headers(user_agent: str = None, platform: str = "macOS") -> dict:
     """Get base headers with optional custom user agent."""
     if not user_agent:
         user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
-    
+
     return {
         "accept": "*/*",
         "accept-language": "en-GB,en;q=0.7",
@@ -190,7 +192,7 @@ def get_base_headers(user_agent: str = None, platform: str = "macOS") -> dict:
         "sec-fetch-site": "same-site",
         "sec-gpc": "1",
         "user-agent": user_agent,
-        "referrer": "https://www.ea.com/"
+        "referrer": "https://www.ea.com/",
     }
 
 

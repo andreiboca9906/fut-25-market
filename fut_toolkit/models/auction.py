@@ -1,4 +1,5 @@
 """Auction and trading models."""
+
 from dataclasses import dataclass
 from typing import List, Optional
 
@@ -8,7 +9,7 @@ from ..constants import AuctionDuration
 @dataclass
 class AuctionInfo:
     """Information about an auction item."""
-    
+
     trade_id: int
     resource_id: int
     item_data: dict
@@ -20,32 +21,32 @@ class AuctionInfo:
     expires: int
     seller_id: Optional[int] = None
     seller_name: Optional[str] = None
-    
-    
+
+
 @dataclass
 class AuctionDetails:
     """Details for creating an auction."""
-    
+
     item_id: int
     duration: AuctionDuration
     start_price: int
     buy_now_price: Optional[int] = None
-    
-    
+
+
 @dataclass
 class BidResult:
     """Result of placing a bid."""
-    
+
     success: bool
     current_bid: int
     auction_info: Optional[AuctionInfo] = None
     error_message: Optional[str] = None
-    
+
 
 @dataclass
 class PlayerSearchParameters:
     """Parameters for searching players."""
-    
+
     page: int = 1
     level: Optional[str] = None
     chemistry_style: Optional[int] = None
@@ -64,7 +65,7 @@ class PlayerSearchParameters:
 @dataclass
 class SearchResponse:
     """Response from search operations."""
-    
+
     auctions: List[AuctionInfo]
     total_results: int
     page: int

@@ -1,4 +1,5 @@
 """Pydantic schemas for API requests/responses."""
+
 from typing import List, Optional
 
 from pydantic import BaseModel, EmailStr, Field
@@ -8,7 +9,7 @@ from fut_toolkit.constants import AppVersion, Platform
 
 class LoginRequest(BaseModel):
     """Request schema for user login."""
-    
+
     email: EmailStr
     password: str
     platform: Platform
@@ -19,7 +20,7 @@ class LoginRequest(BaseModel):
 
 class LoginResponseSchema(BaseModel):
     """Response schema for successful login."""
-    
+
     session_id: str
     nucleus_id: str
     persona_id: str
@@ -30,7 +31,7 @@ class LoginResponseSchema(BaseModel):
 
 class PlayerSearchRequest(BaseModel):
     """Request schema for player search."""
-    
+
     page: int = 1
     level: Optional[str] = None
     chemistry_style: Optional[int] = None
@@ -48,7 +49,7 @@ class PlayerSearchRequest(BaseModel):
 
 class AuctionInfoSchema(BaseModel):
     """Schema for auction information."""
-    
+
     trade_id: int = Field(alias="tradeId")
     resource_id: int = Field(default=0)
     item_data: dict = Field(alias="itemData")
@@ -71,21 +72,21 @@ class AuctionInfoSchema(BaseModel):
 
 class SearchResponseSchema(BaseModel):
     """Schema for search results."""
-    
+
     auctions: List[AuctionInfoSchema] = Field(alias="auctionInfo")
     bid_tokens: dict = Field(alias="bidTokens", default_factory=dict)
 
 
 class BidRequest(BaseModel):
     """Request schema for placing bids."""
-    
+
     trade_id: int
     bid_amount: int
 
 
 class BidResponseSchema(BaseModel):
     """Response schema for bid results."""
-    
+
     success: bool
     current_bid: int
     error_message: Optional[str] = None
@@ -93,7 +94,7 @@ class BidResponseSchema(BaseModel):
 
 class CreditsResponseSchema(BaseModel):
     """Schema for credits information."""
-    
+
     credits: int
     unopened_packs: int
     total_points: Optional[int] = None
@@ -101,7 +102,7 @@ class CreditsResponseSchema(BaseModel):
 
 class WatchlistItemSchema(BaseModel):
     """Schema for watchlist items."""
-    
+
     trade_id: int
     resource_id: int
     item_data: dict
@@ -113,7 +114,7 @@ class WatchlistItemSchema(BaseModel):
 
 class TradePileItemSchema(BaseModel):
     """Schema for trade pile items."""
-    
+
     id: int
     resource_id: int
     item_data: dict
@@ -123,7 +124,7 @@ class TradePileItemSchema(BaseModel):
 
 class TradeStatusSchema(BaseModel):
     """Schema for individual trade status."""
-    
+
     trade_id: int
     status: str
     expires: int
@@ -133,13 +134,13 @@ class TradeStatusSchema(BaseModel):
 
 class TradeStatusResponseSchema(BaseModel):
     """Schema for trade status response."""
-    
+
     trades: List[TradeStatusSchema]
 
 
 class QuickSellResponseSchema(BaseModel):
     """Schema for quick sell response."""
-    
+
     success: bool
     coins_earned: int
     item_id: int
@@ -147,7 +148,7 @@ class QuickSellResponseSchema(BaseModel):
 
 class ItemOperationResponseSchema(BaseModel):
     """Schema for item operation responses."""
-    
+
     success: bool
     item_id: int
     duplicate: Optional[bool] = None
@@ -155,7 +156,7 @@ class ItemOperationResponseSchema(BaseModel):
 
 class RelistResponseSchema(BaseModel):
     """Schema for relist response."""
-    
+
     success: bool
     relisted_count: int
     errors: List[str]
@@ -163,7 +164,7 @@ class RelistResponseSchema(BaseModel):
 
 class PlayerListItemSchema(BaseModel):
     """Schema for player list item."""
-    
+
     asset_id: int
     resource_id: int
     first_name: str
@@ -178,14 +179,14 @@ class PlayerListItemSchema(BaseModel):
 
 class PlayerListResponseSchema(BaseModel):
     """Schema for player list response."""
-    
+
     players: List[PlayerListItemSchema]
     total_results: int
 
 
 class ClubItemSchema(BaseModel):
     """Schema for club items."""
-    
+
     id: int
     resource_id: int
     item_type: str
@@ -198,7 +199,7 @@ class ClubItemSchema(BaseModel):
 
 class SquadPlayerSchema(BaseModel):
     """Schema for squad player."""
-    
+
     id: int
     index: int
     asset_id: int
@@ -209,7 +210,7 @@ class SquadPlayerSchema(BaseModel):
 
 class SquadSchema(BaseModel):
     """Schema for squad."""
-    
+
     id: int
     squad_name: str
     formation: str
@@ -219,13 +220,13 @@ class SquadSchema(BaseModel):
 
 class SquadListResponseSchema(BaseModel):
     """Schema for squad list response."""
-    
+
     squads: List[SquadSchema]
 
 
 class ErrorResponse(BaseModel):
     """Error response schema."""
-    
+
     error: str
     detail: Optional[str] = None
     status_code: Optional[int] = None

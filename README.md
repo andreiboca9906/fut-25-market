@@ -18,6 +18,30 @@ This project uses `uv` for package management:
 uv sync
 ```
 
+## Development Setup (Mandatory)
+
+**All developers must set up git hooks before making any commits:**
+
+Option 1 - Quick setup with script:
+```bash
+./scripts/setup_dev.sh
+```
+
+Option 2 - Manual setup:
+```bash
+# Install dependencies
+uv sync
+
+# Install git hooks (REQUIRED)
+./scripts/setup_dev.sh
+```
+
+The git hooks will automatically:
+- Run `ruff check --fix` to lint and auto-fix issues
+- Run `ruff format` to format code consistently
+
+**This setup is mandatory for all contributors.** Your commits will be rejected if the hooks are not installed and passing.
+
 ## Running the Server
 
 Start the development server:
@@ -118,10 +142,12 @@ The session ID can be obtained through the login process or external authenticat
 
 ## Development
 
-The project uses `ruff` for linting:
+The project uses `ruff` for linting and formatting. Git hooks automatically run these tools on every commit:
 
 ```bash
-uv run ruff check .
+# Manual linting (hooks do this automatically)
+uv run ruff check . --fix
+uv run ruff format .
 ```
 
 Run tests with:

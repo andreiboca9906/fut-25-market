@@ -1,0 +1,280 @@
+[project]
+name = "fifa-ultimate-team-server"
+version = "0.1.0"
+description = "FIFA Ultimate Team web API server"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+    "python-multipart>=0.0.6",
+    "email-validator>=2.2.0",
+    "fake-useragent>=2.2.0",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # WE WANT TO IGNORE THESE
+    # Line too long
+    "E501",
+    # Missing whitespace after ',', ';', or ':'
+    "E231",
+    # Local variable name is assigned to but never used
+    "F841",
+    # Bare except
+    "E722",
+    # Imports not at top of file. We allow it because sometimes we run some setup before imports (django)
+    "E402",
+    # Whitespace before ':'. Black sometimes add it
+    "E203",
+    # Blank line contains whitespace
+    "W293",
+    # Use of assert detected.  The enclosed code will be removed when compiling to optimised byte code.
+    # We are not using optimized byte code, so not relevant
+    "S101",
+    "RUF018",
+    # These rules conflict with our formatting rules
+    "COM812",
+    ## HIGH VALUE - WE WANT TO ENFORCE THESE IN THE FUTURE
+    # Worse noqa experience will discourge devs from noqa-ing
+    "PGH004",
+    # Time-related bugs will reduce with this
+    "DTZ",
+    # Erorr creation and handling improvements
+    "TRY",
+    "B904",
+    "EM",
+    "RSE102",
+    # Code complexity and clenliness related linters - this is hard to enforce but high-value
+    "C",
+    "PLR",
+    "FBT",
+    "SIM",
+    # Security related linters - this is hard to enforce but high-value for security
+    "S113",
+    "S106",
+    "S603",
+    "S105",
+    "S108",
+    "S311",
+    "S608",
+    "S110",
+    "S607",
+    "S324",
+    "S104",
+    "S314",
+    "S602",
+    "S307",
+    "S112",
+    "S606",
+    "S301",
+    "S308",
+    "S605",
+    "S310",
+    "S103",
+    "S107",
+    "S318",
+    "S320",
+    "S306",
+    "S102",
+    "S604",
+    "S701",
+    "S202",
+    "S610",
+    # Shadowing builtins
+    "A",
+    # Pytest fix in parameterize
+    "PT006",
+    # Overshadowing variables in for loops - almost always a bug
+    "PLW2901",
+    # Bugbear issues; these issues help find potential bugs, worth fixing!
+    "B006",
+    "B009",
+    "B905",
+    "B010",
+    "B011",
+    "B019",
+    "B033",
+    "B015",
+    "B005",
+    "B018",
+    "B020",
+    "B012",
+    "B024",
+    "B034",
+    "B007",
+    # Wrong async usage may lead to blocking
+    "ASYNC",
+    # Basic naming
+    "N805",
+    # Weird letters, probably from copy-paste or wrong language
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    ## TYPING
+    # Modern type annotation - easy to fix
+    "UP",
+    # All annotation related linters - it's really worth it, but will be a long
+    # process.
+    "ANN",
+    # Missing ClassVars
+    "RUF012",
+    "RET503",
+    # Logging statement uses string formatting, this makes structured logging worse but we ahve 12957 
+    # instances of this
+    # at the moment.
+    "G004",
+    # Commented out code - this is auto-fixable and worth it!
+    "ERA001",
+    # Too wide catch, medium value
+    "BLE001",
+    ## NOT WORTH ENFORCING
+    # Private member access
+    "SLF001",
+    # Pathlib preference over os.path
+    "PTH",
+    # Better type ignores; we have too many type ignores to enforce
+    "PGH003",
+    # Unused arguments; we have too many unused arguments to enforce
+    "ARG",
+    # Missing type annotations for self; not needed
+    "ANN101",
+    # Documentation-based rules which we aren't enforcing today
+    "D",
+    # No print statements, we don't enforce it today
+    "T201",
+    # String can be None in Django
+    "DJ001",
+    # Formatting in f strings is OK
+    "RUF010",
+    # Return-related issues
+    "RET504",
+    "RET505",
+    # We are defaulting on our TODOs in the code, they are unmanaged.
+    "TD",
+    "FIX",
+    # Test related rules that aren't good enough to enforce
+    "PT018",
+    "PT009",
+    "PT004",
+    "PT011",
+    # Performance-related improvements - should be based on profiling
+    "PERF",
+    "TCH",
+    # Python imports are hell and we won't fix them
+    "TID252",
+    # Risky
+    "RUF005",
+    # Exception name conventions - we're not enforcing it today
+    "N818",
+    # Better logging hygiene - we're not enforcing it today
+    "G",
+    # Order of class members - we're not enforcing it today
+    "DJ012",
+    # https://github.com/dosisod/refurb/blob/master/docs/checks.md#furb129-simplify-readlines
+    # Just for readability and auto fix is dangerous
+    "FURB129",
+    ## RARE VIOLATIONS
+    # These happen too infrequency to explain each one, we just blanket-ignored
+    # them.
+    "INP001",
+    "DJ008",
+    "N806",
+    "N815",
+    "N802",
+    "PLW0603",
+    "RUF015",
+    "PLW1510",
+    "ISC",
+    "RET506",
+    "B023",
+    "PT007",
+    "PD011",
+    "B017",
+    "PIE808",
+    "PT012",
+    "RET501",
+    "PT022",
+    "N999",
+    "N803",
+    "PLW0602",
+    "RET507",
+    "PIE804",
+    "PYI036",
+    "B008",
+    "FLY002",
+    "PT003",
+    "PT015",
+    "PT027",
+    "EXE002",
+    "PIE800",
+    "RET508",
+    "PT008",
+    "PIE810",
+    "PLE1205",
+    "PYI041",
+    "RET502",
+    "RUF006",
+    "PD002",
+    "PLC0208",
+    "PT017",
+    "PYI024",
+    "PD901",
+    "PLW0120",
+    "PLW0127",
+    "N804",
+    "PT019",
+    "N801",
+    "S307",
+    "PT014",
+    "SLOT000",
+    "N817",
+    "N816",
+    "T203",
+    "N811",
+    "PYI016",
+    "RUF013",
+    "PIE796",
+    "PT005",
+    "PT013",
+    "PYI013",
+    "PYI034",
+    "RUF009",
+    "B004",
+    "ICN001",
+    "PYI032",
+    "PT021",
+    "N813",
+    "PD008",
+    "PIE807",
+    "PYI030",
+    "G010",
+    "PLC0105",
+    "PLW0129",
+    "PLW3301",
+    "B026",
+    "B027",
+    "DJ006",
+    "DJ007",
+    "PYI055",
+    "N807",
+    "PD003",
+    "PLE0302",
+    "RUF007",
+    "B035",
+    "RUF016",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.12.7",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]

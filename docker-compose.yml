@@ -1,0 +1,34 @@
+services:
+  postgres-local:
+    image: postgres:17.4
+    container_name: postgres-local-eafc25
+    user: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eafc25
+    ports:
+      - "5432:5432"
+    command: -c fsync=off -c max_prepared_transactions=10 -c shared_buffers=2500MB -c max_connections=1000 -c max_locks_per_transaction=256
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready" ]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+    volumes:
+      - eafc25-local-pg-volume:/var/lib/postgresql-local/data
+
+  postgres-mcp:
+    image: crystaldba/postgres-mcp:latest
+    container_name: postgres-mcp
+    hostname: postgres-mcp
+    ports:
+      - "9432:8000"
+    command: --access-mode=unrestricted --transport=sse
+    environment:
+      - DATABASE_URI=postgresql://postgres:postgres@localhost:5432/eafc25
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  eafc25-local-pg-volume:

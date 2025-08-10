@@ -10,6 +10,25 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: fut_market_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/fut_market_test
+      DJANGO_SETTINGS_MODULE: fut_market.settings
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4

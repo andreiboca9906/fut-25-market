@@ -31,13 +31,13 @@ async def get_credits(request):
     try:
         async with FutClient() as client:
             credits = await client.get_credits()
-            
+
             return CreditsResponse(
                 credits=credits.credits,
                 unopened_packs=credits.unopened_packs,
                 total_points=credits.total_points,
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -53,21 +53,19 @@ async def get_club_player_items(request):
     try:
         async with FutClient() as client:
             players_resp = await client.get_player_list()
-            
+
             # Get asset IDs for database lookup
             asset_ids = [p.asset_id for p in players_resp.players if p.asset_id]
-            
+
             # Fetch player names from database
             player_names = {}
             if asset_ids:
-                db_players = Player.objects.filter(asset_id__in=asset_ids).values(
-                    "asset_id", "first_name", "last_name"
-                )
+                db_players = Player.objects.filter(asset_id__in=asset_ids).values("asset_id", "first_name", "last_name")
                 for db_player in db_players:
                     name = f"{db_player.get('first_name', '')} {db_player.get('last_name', '')}".strip()
                     if name:
                         player_names[db_player["asset_id"]] = name
-            
+
             player_items = [
                 PlayerItem(
                     id=player.id,
@@ -81,12 +79,12 @@ async def get_club_player_items(request):
                 )
                 for player in players_resp.players
             ]
-            
+
             return PlayerListResponse(
                 players=player_items,
                 total=len(player_items),
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -102,7 +100,7 @@ async def get_squads(request):
     try:
         async with FutClient() as client:
             squads_data = await client.get_squad_list()
-            
+
             squads = [
                 Squad(
                     id=squad.id,
@@ -114,12 +112,12 @@ async def get_squads(request):
                 )
                 for squad in squads_data.squads
             ]
-            
+
             return SquadListResponse(
                 squads=squads,
                 active_squad_id=squads_data.squads[0].id if squads_data.squads else 0,
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -135,7 +133,7 @@ async def get_club_items(request):
     try:
         async with FutClient() as client:
             items = await client.get_club_items()
-            
+
             return [
                 ClubItem(
                     id=item.id,
@@ -148,7 +146,7 @@ async def get_club_items(request):
                 )
                 for item in items
             ]
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -165,14 +163,14 @@ async def quick_sell_item(request, item_id: int):
         async with FutClient() as client:
             result = await client.quick_sell_item(item_id)
             credits = await client.get_credits()
-            
+
             return QuickSellResponse(
                 success=result.success,
                 coins_earned=result.coins_earned,
                 total_credits=credits.credits,
                 message="Item sold successfully" if result.success else "Quick sell failed",
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -189,13 +187,13 @@ async def send_to_club(request, item_id: int):
         async with FutClient() as client:
             result = await client.send_to_club(item_id)
             success = result.success
-            
+
             return ItemOperationResponse(
                 success=success,
                 message="Item sent to club" if success else "Failed to send to club",
                 item_id=item_id,
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -212,13 +210,13 @@ async def send_to_tradepile(request, item_id: int):
         async with FutClient() as client:
             result = await client.send_to_trade_pile(item_id)
             success = result.success
-            
+
             return ItemOperationResponse(
                 success=success,
                 message="Item sent to trade pile" if success else "Failed to send to trade pile",
                 item_id=item_id,
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:

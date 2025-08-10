@@ -90,10 +90,7 @@ async def login_with_2fa(request, data: LoginWith2FARequest):
         two_factor_provider = SimpleTwoFactorProvider(data.two_factor_code)
 
         async with FutClient(x_ut_sid=data.x_ut_sid) as client:
-            response = await client.login(
-                login_details,
-                two_factor_provider=two_factor_provider
-            )
+            response = await client.login(login_details, two_factor_provider=two_factor_provider)
 
             return LoginResponse(
                 session_id=response.session_id,

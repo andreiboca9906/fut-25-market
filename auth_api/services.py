@@ -635,7 +635,6 @@ class FutClient:
             raise APIError(f"Get trade status failed: {e.response.text}", e.response.status_code)
 
 
-
 class SessionManager:
     """Manages FUT session storage and retrieval."""
 

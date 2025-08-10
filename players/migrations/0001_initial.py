@@ -6,11 +6,9 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
@@ -72,7 +70,15 @@ class Migration(migrations.Migration):
                 ("price", models.DecimalField(decimal_places=2, max_digits=12)),
                 ("currency", models.CharField(default="COINS", max_length=10)),
                 ("fetched_at", models.DateTimeField(default=django.utils.timezone.now)),
-                ("player", models.ForeignKey(db_column="player_id", on_delete=django.db.models.deletion.CASCADE, related_name="price_history", to="players.player")),
+                (
+                    "player",
+                    models.ForeignKey(
+                        db_column="player_id",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="price_history",
+                        to="players.player",
+                    ),
+                ),
             ],
             options={
                 "db_table": "player_price_history",
@@ -86,7 +92,15 @@ class Migration(migrations.Migration):
                 ("current_price", models.DecimalField(decimal_places=2, max_digits=12)),
                 ("currency", models.CharField(default="COINS", max_length=10)),
                 ("last_updated", models.DateTimeField(default=django.utils.timezone.now)),
-                ("player", models.ForeignKey(db_column="player_id", on_delete=django.db.models.deletion.CASCADE, related_name="prices", to="players.player")),
+                (
+                    "player",
+                    models.ForeignKey(
+                        db_column="player_id",
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="prices",
+                        to="players.player",
+                    ),
+                ),
             ],
             options={
                 "db_table": "player_prices",

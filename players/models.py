@@ -7,13 +7,13 @@ from django.utils import timezone
 
 class PlayerManager(models.Manager):
     """Custom manager for Player model."""
-    
+
     @transaction.atomic
     def bulk_upsert(self, players: List[Dict]) -> bool:
         """Insert or update players in batch."""
         if not players:
             return True
-            
+
         try:
             for player_data in players:
                 player_fields = {
@@ -59,20 +59,17 @@ class PlayerManager(models.Manager):
                     "first_name": player_data.get("first_name"),
                     "last_name": player_data.get("last_name"),
                 }
-                
+
                 # Remove None values
                 player_fields = {k: v for k, v in player_fields.items() if v is not None}
-                
-                self.update_or_create(
-                    id=player_fields["id"],
-                    defaults=player_fields
-                )
-            
+
+                self.update_or_create(id=player_fields["id"], defaults=player_fields)
+
             return True
         except Exception as e:
             print(f"Failed to upsert players: {e}")
             return False
-    
+
     def get_summary_stats(self) -> Dict:
         """Get summary statistics of players."""
         try:
@@ -86,9 +83,9 @@ class PlayerManager(models.Manager):
                 rare_count=Count(Case(When(rare_flag=1, then=1))),
                 common_count=Count(Case(When(rare_flag=0, then=1))),
                 untradeable_count=Count(Case(When(untradeable=True, then=1))),
-                tradeable_count=Count(Case(When(untradeable=False, then=1)))
+                tradeable_count=Count(Case(When(untradeable=False, then=1))),
             )
-            
+
             # Rating distribution
             rating_distribution = []
             rating_ranges = [
@@ -98,56 +95,45 @@ class PlayerManager(models.Manager):
                 ("75-79", 75, 79),
                 ("70-74", 70, 74),
                 ("65-69", 65, 69),
-                ("<65", 0, 64)
+                ("<65", 0, 64),
             ]
-            
+
             for label, min_val, max_val in rating_ranges:
                 if max_val < 100:
-                    count = self.filter(
-                        rating__gte=min_val,
-                        rating__lte=max_val
-                    ).count()
+                    count = self.filter(rating__gte=min_val, rating__lte=max_val).count()
                 else:
-                    count = self.filter(
-                        rating__gte=min_val
-                    ).count()
+                    count = self.filter(rating__gte=min_val).count()
                 if count > 0:
-                    rating_distribution.append({
-                        "rating_range": label,
-                        "count": count
-                    })
-            
+                    rating_distribution.append({"rating_range": label, "count": count})
+
             # Position distribution (top 10)
             position_distribution = []
-            positions = self.exclude(preferred_position__isnull=True).values("preferred_position").annotate(
-                count=Count("id")
-            ).order_by("-count")[:10]
-            
+            positions = (
+                self.exclude(preferred_position__isnull=True)
+                .values("preferred_position")
+                .annotate(count=Count("id"))
+                .order_by("-count")[:10]
+            )
+
             for pos in positions:
-                position_distribution.append({
-                    "preferred_position": pos["preferred_position"],
-                    "count": pos["count"]
-                })
-            
+                position_distribution.append({"preferred_position": pos["preferred_position"], "count": pos["count"]})
+
             # Card type distribution
             card_type_distribution = []
-            card_types = self.exclude(item_type__isnull=True).values("item_type").annotate(
-                count=Count("id")
-            ).order_by("-count")
-            
+            card_types = (
+                self.exclude(item_type__isnull=True).values("item_type").annotate(count=Count("id")).order_by("-count")
+            )
+
             for ct in card_types:
-                card_type_distribution.append({
-                    "item_type": ct["item_type"],
-                    "count": ct["count"]
-                })
-            
+                card_type_distribution.append({"item_type": ct["item_type"], "count": ct["count"]})
+
             return {
                 "general_stats": general_stats,
                 "rating_distribution": rating_distribution,
                 "position_distribution": position_distribution,
-                "card_type_distribution": card_type_distribution
+                "card_type_distribution": card_type_distribution,
             }
-            
+
         except Exception as e:
             print(f"Failed to get players summary: {e}")
             return {
@@ -155,7 +141,7 @@ class PlayerManager(models.Manager):
                 "general_stats": {},
                 "rating_distribution": [],
                 "position_distribution": [],
-                "card_type_distribution": []
+                "card_type_distribution": [],
             }
 
 
@@ -203,7 +189,7 @@ class Player(models.Model):
     last_name = models.CharField(max_length=100, null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     objects = PlayerManager()
 
     class Meta:
@@ -216,17 +202,12 @@ class Player(models.Model):
 
 class PlayerPriceManager(models.Manager):
     """Custom manager for PlayerPrice model."""
-    
+
     @transaction.atomic
     def update_price(self, player_id: int, platform: str, price: float, currency: str = "COINS"):
         """Update or create price for a player."""
         return self.update_or_create(
-            player_id=player_id,
-            platform=platform,
-            defaults={
-                "current_price": price,
-                "currency": currency
-            }
+            player_id=player_id, platform=platform, defaults={"current_price": price, "currency": currency}
         )
 
 
@@ -237,7 +218,7 @@ class PlayerPrice(models.Model):
     current_price = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default="COINS")
     last_updated = models.DateTimeField(default=timezone.now)
-    
+
     objects = PlayerPriceManager()
 
     class Meta:

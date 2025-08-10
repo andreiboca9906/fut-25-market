@@ -66,13 +66,13 @@ async def search_market(request, criteria: SearchCriteria):
             nation=criteria.nationality,
             resource_id=criteria.player_id,
         )
-        
+
         async with FutClient() as client:
             result = await client.search_players(fut_criteria)
-            
+
             page_size = len(result.auctions)
             total_pages = (result.total_results + page_size - 1) // page_size if page_size else 0
-            
+
             return SearchResult(
                 total_pages=total_pages,
                 total_results=result.total_results,
@@ -80,7 +80,7 @@ async def search_market(request, criteria: SearchCriteria):
                 page_size=page_size,
                 items=[asdict(a) for a in result.auctions],
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -97,7 +97,7 @@ async def place_bid(request, bid_data: BidRequest):
         async with FutClient() as client:
             bid_result = await client.place_bid(bid_data.trade_id, bid_data.bid_amount)
             credits = await client.get_credits()
-            
+
             return BidResponse(
                 success=bid_result.success,
                 message="Bid placed successfully" if bid_result.success else "Bid failed",
@@ -105,7 +105,7 @@ async def place_bid(request, bid_data: BidRequest):
                 bid_amount=bid_data.bid_amount,
                 credits=credits.credits,
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -122,7 +122,7 @@ async def buy_now(request, trade_id: int):
         async with FutClient() as client:
             res = await client.buy_now(trade_id)
             credits = await client.get_credits()
-            
+
             return BidResponse(
                 success=res.success,
                 message="Purchase successful" if res.success else "Purchase failed",
@@ -130,7 +130,7 @@ async def buy_now(request, trade_id: int):
                 bid_amount=res.current_bid,
                 credits=credits.credits,
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -146,17 +146,19 @@ async def get_watchlist(request):
     try:
         async with FutClient() as client:
             watchlist = await client.get_watchlist()
-            
+
             return [
                 WatchlistItem(
                     trade_id=item.trade_id,
-                    item_data=_map_item_data(item.item_data if isinstance(item.item_data, dict) else asdict(item.item_data)),
+                    item_data=_map_item_data(
+                        item.item_data if isinstance(item.item_data, dict) else asdict(item.item_data)
+                    ),
                     auction_info=None,
                     watched=True,
                 )
                 for item in watchlist
             ]
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -172,19 +174,21 @@ async def get_tradepile(request):
     try:
         async with FutClient() as client:
             tradepile = await client.get_trade_pile()
-            
+
             return [
                 TradePileItem(
                     id=item.id,
                     pile="trade",
                     trade_id=item.trade_id,
-                    item_data=_map_item_data(item.item_data if isinstance(item.item_data, dict) else asdict(item.item_data)),
+                    item_data=_map_item_data(
+                        item.item_data if isinstance(item.item_data, dict) else asdict(item.item_data)
+                    ),
                     auction_info=None,
                     trade_state=item.trade_state,
                 )
                 for item in tradepile
             ]
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -203,11 +207,11 @@ async def get_trade_status(request, data: TradeStatusRequest):
             # Filter by requested trade_ids if provided
             if data.trade_ids:
                 status.trades = [t for t in status.trades if t.trade_id in data.trade_ids]
-            
+
             return TradeStatusResponse(
                 trades=status.trades,
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -223,9 +227,9 @@ async def add_to_watchlist(request, trade_id: int):
     try:
         async with FutClient() as client:
             success = await client.add_to_watchlist(trade_id)
-            
+
             return {"success": success, "message": "Added to watchlist" if success else "Failed to add"}
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -241,9 +245,9 @@ async def remove_from_watchlist(request, trade_id: int):
     try:
         async with FutClient() as client:
             success = await client.remove_from_watchlist(trade_id)
-            
+
             return {"success": success, "message": "Removed from watchlist" if success else "Failed to remove"}
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -259,9 +263,9 @@ async def remove_from_tradepile(request, trade_id: int):
     try:
         async with FutClient() as client:
             success = await client.remove_from_trade_pile(trade_id)
-            
+
             return {"success": success, "message": "Removed from trade pile" if success else "Failed to remove"}
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:
@@ -277,13 +281,13 @@ async def relist_items(request, data: RelistRequest):
     try:
         async with FutClient() as client:
             result = await client.relist_items()
-            
+
             return RelistResponse(
                 success=result.success,
                 message=f"Relisted {result.relisted_count} items",
                 relisted_count=result.relisted_count,
             )
-    
+
     except RateLimitError:
         raise HttpError(429, "Rate limit exceeded")
     except APIError as e:

@@ -8,7 +8,7 @@ A Python web server providing RESTful API access to EA's FIFA Ultimate Team web 
 - **Transfer Market**: Search players, place bids, buy items
 - **Club Management**: View credits, watchlist, and inventory
 - **Session Management**: Cookie-based session persistence
-- **Modern API**: FastAPI with automatic OpenAPI documentation
+- **Modern API**: Django with Django Ninja for high-performance REST APIs
 
 ## Installation
 
@@ -18,97 +18,114 @@ This project uses `uv` for package management:
 uv sync
 ```
 
-## Development Setup (Mandatory)
+## Database Setup
 
-**All developers must set up git hooks before making any commits:**
+This project requires PostgreSQL. Start the database using Docker Compose:
 
-Option 1 - Quick setup with script:
 ```bash
-./scripts/setup_dev.sh
+docker-compose up -d
 ```
 
-Option 2 - Manual setup:
+Run database migrations:
+
 ```bash
-# Install dependencies
-uv sync
+# Apply all migrations
+uv run python manage.py migrate
 
-# Install git hooks (REQUIRED)
-./scripts/setup_dev.sh
+# Create migrations after model changes
+uv run python manage.py makemigrations
 ```
-
-The git hooks will automatically:
-- Run `ruff check --fix` to lint and auto-fix issues
-- Run `ruff format` to format code consistently
-
-**This setup is mandatory for all contributors.** Your commits will be rejected if the hooks are not installed and passing.
 
 ## Running the Server
 
 Start the development server:
 
 ```bash
-uv run python main.py
+uv run python manage.py runserver 8010
 ```
 
-The API will be available at `http://localhost:8010` with interactive documentation at `http://localhost:8010/docs`.
+The API will be available at `http://localhost:8010` with interactive documentation at `http://localhost:8010/api/docs`.
+
+## Running Tests
+
+Run all tests:
+
+```bash
+# Run all tests
+uv run python manage.py test
+
+# Run tests for specific apps
+uv run python manage.py test auth_api
+uv run python manage.py test market
+uv run python manage.py test club
+
+# Run with verbose output
+uv run python manage.py test --verbosity=2
+
+# Keep test database between runs (faster for repeated testing)
+uv run python manage.py test --keepdb
+```
 
 ## API Endpoints
 
 ### Authentication
-- `POST /auth/login` - Login with credentials
-- `POST /auth/login-with-2fa` - Login with two-factor authentication
+- `POST /api/auth/login` - Login with credentials
+- `POST /api/auth/login-with-2fa` - Login with two-factor authentication
 
 ### Transfer Market
-- `POST /market/search` - Search for players on transfer market
-- `POST /market/bid` - Place a bid on an auction
-- `POST /market/buy-now/{trade_id}` - Buy item immediately at buy-now price
-- `GET /market/watchlist` - Get user's watchlist items
-- `POST /market/watchlist/{trade_id}` - Add item to watchlist
-- `DELETE /market/watchlist/{trade_id}` - Remove item from watchlist
-- `GET /market/tradepile` - Get trade pile items
-- `DELETE /market/tradepile/{trade_id}` - Remove item from trade pile
-- `GET /market/trade-status` - Get trade status for active auctions
-- `POST /market/relist` - Relist all items in trade pile
+- `POST /api/market/search` - Search for players on transfer market
+- `POST /api/market/bid` - Place a bid on an auction
+- `POST /api/market/buy-now/{trade_id}` - Buy item immediately at buy-now price
+- `GET /api/market/watchlist` - Get user's watchlist items
+- `POST /api/market/watchlist/{trade_id}` - Add item to watchlist
+- `DELETE /api/market/watchlist/{trade_id}` - Remove item from watchlist
+- `GET /api/market/tradepile` - Get trade pile items
+- `DELETE /api/market/tradepile/{trade_id}` - Remove item from trade pile
+- `GET /api/market/trade-status` - Get trade status for active auctions
+- `POST /api/market/relist` - Relist all items in trade pile
 
 ### Club Management
-- `GET /club/credits` - Get current credit balance and packs
-- `GET /club/players` - Get all players and legends list
-- `GET /club/squads` - Get user's squad list
-- `GET /club/items` - Get club items
-- `DELETE /club/items/{item_id}/quick-sell` - Quick sell an item
-- `POST /club/items/{item_id}/send-to-club` - Send item to club
-- `POST /club/items/{item_id}/send-to-tradepile` - Send item to trade pile
+- `GET /api/club/credits` - Get current credit balance and packs
+- `GET /api/club/players` - Get all players and legends list
+- `GET /api/club/squads` - Get user's squad list
+- `GET /api/club/items` - Get club items
+- `DELETE /api/club/items/{item_id}/quick-sell` - Quick sell an item
+- `POST /api/club/items/{item_id}/send-to-club` - Send item to club
+- `POST /api/club/items/{item_id}/send-to-tradepile` - Send item to trade pile
 
-## Example Usage
+## Example Usage with curl
 
 ### Login
 ```bash
-curl -X POST "http://localhost:8010/auth/login" \
+curl -X POST "http://localhost:8010/api/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "your.email@example.com",
     "password": "yourpassword",
     "platform": "ps5",
+    "app_version": "WebApp",
+    "secret_answer": "your_secret_answer",
     "x_ut_sid": "45542323-24ea-4619-a5c6-cb8f314c3137"
   }'
 ```
 
 ### Search Players (requires X-UT-SID header)
 ```bash
-curl -X POST "http://localhost:8010/market/search" \
+curl -X POST "http://localhost:8010/api/market/search" \
   -H "Content-Type: application/json" \
   -H "x-ut-sid: 45542323-24ea-4619-a5c6-cb8f314c3137" \
   -d '{
-    "page": 1,
+    "type": "player",
+    "page": 0,
     "position": "ST",
     "max_price": 100000,
-    "min_buy": 50000
+    "min_buy_now": 50000
   }'
 ```
 
 ### Place Bid (requires X-UT-SID header)
 ```bash
-curl -X POST "http://localhost:8010/market/bid" \
+curl -X POST "http://localhost:8010/api/market/bid" \
   -H "Content-Type: application/json" \
   -H "x-ut-sid: 45542323-24ea-4619-a5c6-cb8f314c3137" \
   -d '{
@@ -119,13 +136,13 @@ curl -X POST "http://localhost:8010/market/bid" \
 
 ### Get Trade Pile (requires X-UT-SID header)
 ```bash
-curl -X GET "http://localhost:8010/market/tradepile" \
+curl -X GET "http://localhost:8010/api/market/tradepile" \
   -H "x-ut-sid: 45542323-24ea-4619-a5c6-cb8f314c3137"
 ```
 
 ### Get Club Items (requires X-UT-SID header)
 ```bash
-curl -X GET "http://localhost:8010/club/items" \
+curl -X GET "http://localhost:8010/api/club/items" \
   -H "x-ut-sid: 45542323-24ea-4619-a5c6-cb8f314c3137"
 ```
 
@@ -142,22 +159,22 @@ The session ID can be obtained through the login process or external authenticat
 
 ## Development
 
-The project uses `ruff` for linting and formatting. Git hooks automatically run these tools on every commit:
+The project uses `ruff` for linting and formatting:
 
 ```bash
-# Manual linting (hooks do this automatically)
+# Linting with auto-fix
 uv run ruff check . --fix
+
+# Code formatting
 uv run ruff format .
-```
-
-Run tests with:
-
-```bash
-uv run pytest
 ```
 
 ## Architecture
 
-- `fut_toolkit/` - Core FIFA Ultimate Team API client
-- `api/` - FastAPI web server and routes  
-- `main.py` - Application entry point
+- `auth_api/` - Authentication app with login endpoints
+- `market/` - Transfer market functionality
+- `club/` - Club management endpoints
+- `players/` - Player data management
+- `core/` - Shared models and utilities
+- `fut_market/` - Django project settings
+- `manage.py` - Django management command entry point

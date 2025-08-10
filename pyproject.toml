@@ -5,15 +5,17 @@ description = "FIFA Ultimate Team web API server"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "fastapi>=0.104.0",
-    "uvicorn>=0.24.0",
+    "django>=5.2.5",
+    "djangorestframework>=3.15.0",
+    "django-cors-headers>=4.5.0",
+    "daphne>=4.1.0",
     "httpx>=0.25.0",
     "pydantic>=2.0.0",
-    "python-multipart>=0.0.6",
     "email-validator>=2.2.0",
     "fake-useragent>=2.2.0",
     "requests>=2.32.4",
     "psycopg2-binary>=2.9.10",
+    "django-ninja>=1.3.0",
 ]
 
 [tool.ruff]

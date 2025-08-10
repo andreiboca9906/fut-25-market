@@ -1,6 +1,4 @@
-"""
-Database manager for FUT data operations
-"""
+"""Database manager for FUT data operations."""
 
 import os
 import traceback
@@ -9,7 +7,6 @@ from typing import Dict, List
 import psycopg2
 from psycopg2.extras import Json, execute_batch
 
-# Database configuration
 DB_CONFIG = {
     "host": os.getenv("DB_HOST", "localhost"),
     "port": int(os.getenv("DB_PORT", "5432")),
@@ -20,14 +17,14 @@ DB_CONFIG = {
 
 
 class DatabaseManager:
-    """Manages database connections and operations"""
+    """Manages database connections and operations."""
     
     def __init__(self):
         self.conn = None
         self.cursor = None
         
     def connect(self):
-        """Establish database connection"""
+        """Establish database connection."""
         try:
             self.conn = psycopg2.connect(**DB_CONFIG)
             self.cursor = self.conn.cursor()
@@ -37,7 +34,7 @@ class DatabaseManager:
             return False
     
     def create_table(self):
-        """Create players table if it doesn't exist"""
+        """Create players table if it doesn't exist."""
         create_table_query = """
         CREATE TABLE IF NOT EXISTS players (
             id BIGINT PRIMARY KEY,
@@ -102,9 +99,8 @@ class DatabaseManager:
             return False
     
     def add_name_columns_if_not_exists(self):
-        """Add first_name and last_name columns if they don't exist"""
+        """Add first_name and last_name columns if they don't exist."""
         try:
-            # Check if columns exist
             self.cursor.execute("""
                 SELECT column_name
                 FROM information_schema.columns
@@ -113,7 +109,6 @@ class DatabaseManager:
             """)
             existing_columns = [row[0] for row in self.cursor.fetchall()]
             
-            # Add missing columns
             if "first_name" not in existing_columns:
                 self.cursor.execute("ALTER TABLE players ADD COLUMN first_name VARCHAR(100)")
                 print("Added first_name column to players table")
@@ -130,7 +125,7 @@ class DatabaseManager:
             return False
     
     def upsert_players(self, players: List[Dict]):
-        """Insert or update players in batch"""
+        """Insert or update players in batch."""
         if not players:
             return True
             
@@ -202,23 +197,18 @@ class DatabaseManager:
         """
         
         try:
-            # Prepare data for insertion
             prepared_data = []
             for player in players:
-                # Convert JSON fields to Json type for proper storage
                 prepared_player = player.copy()
                 
-                # Handle missing guidAssetId field specifically
                 if "guidAssetId" not in prepared_player:
                     prepared_player["guidAssetId"] = None
                 
-                # Handle name fields
                 if "first_name" not in prepared_player:
                     prepared_player["first_name"] = None
                 if "last_name" not in prepared_player:
                     prepared_player["last_name"] = None
                 
-                # Handle JSON fields
                 json_fields = ["statsList", "lifetimeStats", "attributeArray",
                               "possiblePositions", "baseTraits", "iconTraitsPriorities",
                               "iconTraits", "plusPlusRoles", "groups"]
@@ -231,7 +221,6 @@ class DatabaseManager:
                         
                 prepared_data.append(prepared_player)
             
-            # Execute batch insert
             execute_batch(self.cursor, insert_query, prepared_data, page_size=100)
             self.conn.commit()
             return True
@@ -241,7 +230,6 @@ class DatabaseManager:
             print(f"Error type: {type(e).__name__}")
             print(f"Full traceback:\n{error_details}")
             
-            # Log sample player data for debugging
             if players:
                 print(f"Sample player keys: {list(players[0].keys())}")
                 print(f"Total players in batch: {len(players)}")
@@ -250,7 +238,7 @@ class DatabaseManager:
             return False
     
     def update_player_names(self, asset_id: int, first_name: str, last_name: str):
-        """Update first_name and last_name for a specific player by asset_id"""
+        """Update first_name and last_name for a specific player by asset_id."""
         try:
             update_query = """
             UPDATE players
@@ -264,8 +252,111 @@ class DatabaseManager:
             self.conn.rollback()
             return False
     
+    def get_players_sample(self, limit: int = 5) -> List[Dict]:
+        """Get a sample of players from the database."""
+        try:
+            query = """
+            SELECT id, asset_id, rating, preferred_position, first_name, last_name
+            FROM players
+            WHERE rating > 80
+            ORDER BY rating DESC
+            LIMIT %s
+            """
+            self.cursor.execute(query, (limit,))
+            rows = self.cursor.fetchall()
+            
+            return [
+                {
+                    "id": row[0],
+                    "asset_id": row[1],
+                    "rating": row[2],
+                    "preferred_position": row[3],
+                    "first_name": row[4],
+                    "last_name": row[5]
+                }
+                for row in rows
+            ]
+        except Exception as e:
+            print(f"Failed to get players sample: {e}")
+            return []
+    
+    def get_players_summary(self) -> Dict:
+        """Get summary statistics of players in the database."""
+        try:
+            summary_query = """
+            WITH stats AS (
+                SELECT
+                    COUNT(*) as total_count,
+                    COUNT(DISTINCT asset_id) as unique_players,
+                    AVG(rating) as avg_rating,
+                    MIN(rating) as min_rating,
+                    MAX(rating) as max_rating,
+                    COUNT(CASE WHEN rare_flag = 1 THEN 1 END) as rare_count,
+                    COUNT(CASE WHEN rare_flag = 0 THEN 1 END) as common_count,
+                    COUNT(CASE WHEN untradeable = true THEN 1 END) as untradeable_count,
+                    COUNT(CASE WHEN untradeable = false THEN 1 END) as tradeable_count
+                FROM players
+            ),
+            rating_distribution AS (
+                SELECT
+                    CASE
+                        WHEN rating >= 90 THEN '90+'
+                        WHEN rating >= 85 THEN '85-89'
+                        WHEN rating >= 80 THEN '80-84'
+                        WHEN rating >= 75 THEN '75-79'
+                        WHEN rating >= 70 THEN '70-74'
+                        WHEN rating >= 65 THEN '65-69'
+                        WHEN rating < 65 THEN '<65'
+                    END as rating_range,
+                    COUNT(*) as count
+                FROM players
+                WHERE rating IS NOT NULL
+                GROUP BY rating_range
+            ),
+            position_distribution AS (
+                SELECT preferred_position, COUNT(*) as count
+                FROM players
+                WHERE preferred_position IS NOT NULL
+                GROUP BY preferred_position
+                ORDER BY count DESC
+                LIMIT 10
+            ),
+            card_type_distribution AS (
+                SELECT item_type, COUNT(*) as count
+                FROM players
+                WHERE item_type IS NOT NULL
+                GROUP BY item_type
+                ORDER BY count DESC
+            )
+            SELECT
+                (SELECT row_to_json(stats) FROM stats) as general_stats,
+                (SELECT json_agg(row_to_json(rd)) FROM rating_distribution rd) as rating_distribution,
+                (SELECT json_agg(row_to_json(pd)) FROM position_distribution pd) as position_distribution,
+                (SELECT json_agg(row_to_json(cd)) FROM card_type_distribution cd) as card_type_distribution
+            """
+            
+            self.cursor.execute(summary_query)
+            result = self.cursor.fetchone()
+            
+            return {
+                "general_stats": result[0] if result[0] else {},
+                "rating_distribution": result[1] if result[1] else [],
+                "position_distribution": result[2] if result[2] else [],
+                "card_type_distribution": result[3] if result[3] else []
+            }
+            
+        except Exception as e:
+            print(f"Failed to get players summary: {e}")
+            return {
+                "error": str(e),
+                "general_stats": {},
+                "rating_distribution": [],
+                "position_distribution": [],
+                "card_type_distribution": []
+            }
+    
     def close(self):
-        """Close database connection"""
+        """Close database connection."""
         if self.cursor:
             self.cursor.close()
         if self.conn:

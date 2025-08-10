@@ -3,7 +3,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.routers import auth, club, market
+from api.routers import auth, club, market, player_data
 
 app = FastAPI(title="FIFA Ultimate Team API", description="FIFA Ultimate Team web API server", version="1.0.0")
 
@@ -18,6 +18,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(market.router)
 app.include_router(club.router)
+app.include_router(player_data.router)
 
 
 @app.get("/")

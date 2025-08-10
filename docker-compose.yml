@@ -1,6 +1,6 @@
 services:
   postgres-local:
-    image: postgres:17.4
+    image: timescale/timescaledb:latest-pg17
     container_name: postgres-local-eafc25
     user: postgres
     environment:

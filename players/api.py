@@ -16,7 +16,11 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
-@router.post("/fetch-all")
+@router.post(
+    path="/fetch-all",
+    summary="[FUT Scraping] [Heavy] Fetch all players",
+    description="Fetch all players from FUT authenticated API using defid endpoint and store in database. This is a heavy operation and should be used with caution.",
+)
 async def fetch_all_players(request):
     """Fetch all players from FUT API using defid endpoint and store in database."""
     try:
@@ -37,20 +41,18 @@ async def fetch_all_players(request):
         raise HttpError(500, f"An error occurred: {str(e)}")
 
 
-@router.post("/update-names")
-async def update_player_names(request, asset_id: int, first_name: str, last_name: str):
+@router.post(
+    path="/update-names",
+    summary="[FUT Scraping] [Heavy] Update all player names (first and last names)",
+    description="Fetch player names from EA public API and update in database.",
+)
+async def update_player_names(request):
     """Update player names in database."""
     try:
-        updated = await sync_to_async(Player.objects.filter(asset_id=asset_id).update)(
-            first_name=first_name, last_name=last_name
-        )
-        success = updated > 0
-
-        if success:
-            return {"success": True, "message": f"Successfully updated names for player {asset_id}"}
-        else:
-            raise HttpError(404, f"Player with asset_id {asset_id} not found")
-
+        sid = request.headers.get("x-ut-sid", "")
+        service = PlayerDataService(sid)
+        result = await service.update_player_names()
+        return {"success": True, "message": "Successfully updated names for all players", "meta": {**result}}
     except Exception as e:
         logger.error(f"Error updating player names: {e}")
         raise HttpError(500, f"An error occurred: {str(e)}")
@@ -60,11 +62,12 @@ async def update_player_names(request, asset_id: int, first_name: str, last_name
 async def get_players_sample(request, limit: int = 5):
     """Get a sample of players from database."""
     try:
-        players = await sync_to_async(list)(
+        query = (
             Player.objects.filter(rating__gt=80)
             .order_by("-rating")[:limit]
             .values("id", "asset_id", "rating", "preferred_position", "first_name", "last_name")
         )
+        players = await sync_to_async(lambda: list(query))()
 
         return {"success": True, "count": len(players), "players": players}
 
@@ -120,7 +123,7 @@ async def get_player_prices(request, player_id: int, platform: Optional[str] = N
         if platform:
             query = query.filter(platform=platform)
 
-        prices = await sync_to_async(list)(query.values())
+        prices = await sync_to_async(lambda: query.values())()
 
         return {"success": True, "player_id": player_id, "prices": prices}
 
@@ -140,7 +143,7 @@ async def get_price_history(request, player_id: int, platform: Optional[str] = N
         if platform:
             query = query.filter(platform=platform)
 
-        history = await sync_to_async(list)(query.order_by("-fetched_at").values())
+        history = await sync_to_async(lambda: query.order_by("-fetched_at").values())()
 
         return {"success": True, "player_id": player_id, "days": days, "count": len(history), "history": history}
 

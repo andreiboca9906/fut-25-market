@@ -1,47 +1,50 @@
 """Player-related models."""
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List
 
 
 @dataclass
 class PlayerDefinition:
     """Basic player definition."""
 
-    asset_id: int
-    resource_id: int
-    first_name: str
-    last_name: str
-    common_name: Optional[str] = None
-    rating: Optional[int] = None
-    position: Optional[str] = None
-    nation: Optional[int] = None
-    league: Optional[int] = None
-    team: Optional[int] = None
-
-
-@dataclass
-class PlayerItem:
-    """Player item with stats and attributes."""
-
     id: int
+    timestamp: int
+    formation: str
+    untradeable: bool
     asset_id: int
-    resource_id: int
-    item_type: str
     rating: int
-    first_name: str
-    last_name: str
-    common_name: Optional[str] = None
-    position: Optional[str] = None
-    nation: Optional[int] = None
-    league: Optional[int] = None
-    team: Optional[int] = None
-    contract: Optional[int] = None
-    fitness: Optional[int] = None
-    training: Optional[int] = None
-    suspension: Optional[int] = None
-    injury: Optional[int] = None
-    attributes: Optional[List[dict]] = None
+    dream: bool
+    item_type: str
+    resource_id: int
+    owners: int
+    discard_value: int
+    cardsubtypeid: int
+    last_sale_price: int
+    injury_type: str
+    injury_games: int
+    preferred_position: str
+    stats_list: List = None
+    lifetime_stats: List = None
+    contract: int = 0
+    teamid: int = 0
+    rareflag: int = 0
+    play_style: int = 0
+    league_id: int = 0
+    loyalty_bonus: int = 0
+    pile: int = 0
+    nation: int = 0
+    resource_game_year: int = 0
+    guid_asset_id: str = ""
+    attribute_array: List[int] = None
+    skillmoves: int = 0
+    weakfootabilitytypecode: int = 0
+    preferredfoot: int = 0
+    possible_positions: List[str] = None
+    gender: int = 0
+    base_traits: List[int] = None
+    icon_traits_priorities: dict = None
+    plus_plus_roles: List[int] = None
 
 
 @dataclass

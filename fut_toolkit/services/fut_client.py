@@ -333,18 +333,47 @@ class FutClient:
             data = response.json()
 
             players = []
-            for item in data.get("players", []):
+            for item in data.get("itemData", []):
+                if item.get("itemType") != "player":
+                    continue
                 player = PlayerDefinition(
+                    id=item["id"],
+                    timestamp=item.get("timestamp", 0),
+                    formation=item.get("formation", ""),
+                    untradeable=item.get("untradeable", False),
                     asset_id=item["assetId"],
+                    rating=item["rating"],
+                    dream=item.get("dream", False),
+                    item_type=item["itemType"],
                     resource_id=item["resourceId"],
-                    first_name=item["firstName"],
-                    last_name=item["lastName"],
-                    common_name=item.get("commonName"),
-                    rating=item.get("rating"),
-                    position=item.get("position"),
-                    nation=item.get("nation"),
-                    league=item.get("league"),
-                    team=item.get("team"),
+                    owners=item.get("owners", 0),
+                    discard_value=item.get("discardValue", 0),
+                    cardsubtypeid=item.get("cardsubtypeid", 0),
+                    last_sale_price=item.get("lastSalePrice", 0),
+                    injury_type=item.get("injuryType", "none"),
+                    injury_games=item.get("injuryGames", 0),
+                    preferred_position=item.get("preferredPosition", ""),
+                    stats_list=item.get("statsList", []),
+                    lifetime_stats=item.get("lifetimeStats", []),
+                    contract=item.get("contract", 0),
+                    teamid=item.get("teamid", 0),
+                    rareflag=item.get("rareflag", 0),
+                    play_style=item.get("playStyle", 0),
+                    league_id=item.get("leagueId", 0),
+                    loyalty_bonus=item.get("loyaltyBonus", 0),
+                    pile=item.get("pile", 0),
+                    nation=item.get("nation", 0),
+                    resource_game_year=item.get("resourceGameYear", 0),
+                    guid_asset_id=item.get("guidAssetId", ""),
+                    attribute_array=item.get("attributeArray", []),
+                    skillmoves=item.get("skillmoves", 0),
+                    weakfootabilitytypecode=item.get("weakfootabilitytypecode", 0),
+                    preferredfoot=item.get("preferredfoot", 0),
+                    possible_positions=item.get("possiblePositions", []),
+                    gender=item.get("gender", 0),
+                    base_traits=item.get("baseTraits", []),
+                    icon_traits_priorities=item.get("iconTraitsPriorities", {}),
+                    plus_plus_roles=item.get("plusPlusRoles", []),
                 )
                 players.append(player)
 

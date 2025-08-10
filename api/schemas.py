@@ -165,23 +165,49 @@ class RelistResponseSchema(BaseModel):
 class PlayerListItemSchema(BaseModel):
     """Schema for player list item."""
 
-    asset_id: int
-    resource_id: int
-    first_name: str
-    last_name: str
-    common_name: Optional[str] = None
-    rating: Optional[int] = None
-    position: Optional[str] = None
-    nation: Optional[int] = None
-    league: Optional[int] = None
-    team: Optional[int] = None
+    id: int
+    timestamp: int
+    formation: str
+    untradeable: bool
+    asset_id: int = Field(alias="assetId")
+    rating: int
+    dream: bool
+    item_type: str = Field(alias="itemType")
+    resource_id: int = Field(alias="resourceId")
+    owners: int
+    discard_value: int = Field(alias="discardValue")
+    cardsubtypeid: int
+    last_sale_price: int = Field(alias="lastSalePrice")
+    injury_type: str = Field(alias="injuryType")
+    injury_games: int = Field(alias="injuryGames")
+    preferred_position: str = Field(alias="preferredPosition")
+    stats_list: List = Field(alias="statsList", default_factory=list)
+    lifetime_stats: List = Field(alias="lifetimeStats", default_factory=list)
+    contract: int
+    teamid: int
+    rareflag: int
+    play_style: int = Field(alias="playStyle")
+    league_id: int = Field(alias="leagueId")
+    loyalty_bonus: int = Field(alias="loyaltyBonus")
+    pile: int
+    nation: int
+    resource_game_year: int = Field(alias="resourceGameYear")
+    guid_asset_id: str = Field(alias="guidAssetId")
+    attribute_array: List[int] = Field(alias="attributeArray")
+    skillmoves: int
+    weakfootabilitytypecode: int
+    preferredfoot: int
+    possible_positions: List[str] = Field(alias="possiblePositions")
+    gender: int
+    base_traits: List[int] = Field(alias="baseTraits", default_factory=list)
+    icon_traits_priorities: dict = Field(alias="iconTraitsPriorities", default_factory=dict)
+    plus_plus_roles: List[int] = Field(alias="plusPlusRoles", default_factory=list)
 
 
 class PlayerListResponseSchema(BaseModel):
     """Schema for player list response."""
 
-    players: List[PlayerListItemSchema]
-    total_results: int
+    item_data: List[PlayerListItemSchema] = Field(alias="itemData", default_factory=list)
 
 
 class ClubItemSchema(BaseModel):

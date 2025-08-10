@@ -87,7 +87,7 @@ class ClubSchemaTestCase(TestCase):
         if data:
             response = QuickSellResponse(**data)
             self.assertIsNotNone(response.success)
-            self.assertIsNotNone(response.credits_earned)
+            self.assertIsNotNone(response.coins_earned)
             self.assertIsNotNone(response.total_credits)
     
     def test_item_operation_response_schema(self):

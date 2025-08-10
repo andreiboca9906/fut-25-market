@@ -192,7 +192,7 @@ def get_base_headers(user_agent: str = None, platform: str = "macOS") -> dict:
         "sec-fetch-site": "same-site",
         "sec-gpc": "1",
         "user-agent": user_agent,
-        "referrer": "https://www.ea.com/",
+        "referer": "https://www.ea.com/",
     }
 
 

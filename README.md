@@ -86,7 +86,7 @@ uv run python manage.py test --keepdb
 
 ### Club Management
 - `GET /api/club/credits` - Get current credit balance and packs
-- `GET /api/club/players` - Get all players and legends list
+- `GET /api/club/player-items` - Get all player items in club
 - `GET /api/club/squads` - Get user's squad list
 - `GET /api/club/items` - Get club items
 - `DELETE /api/club/items/{item_id}/quick-sell` - Quick sell an item

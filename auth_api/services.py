@@ -634,12 +634,6 @@ class FutClient:
         except httpx.HTTPStatusError as e:
             raise APIError(f"Get trade status failed: {e.response.text}", e.response.status_code)
 
-    async def get_trade_status_by_ids(self, trade_ids: List[int]) -> TradeStatusResponse:
-        """Get trade status and filter by specific trade IDs."""
-        full = await self.get_trade_status()
-        if trade_ids:
-            full.trades = [t for t in full.trades if t.trade_id in trade_ids]
-        return full
 
 
 class SessionManager:

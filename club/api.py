@@ -8,6 +8,7 @@ from ninja.errors import HttpError
 
 from auth_api.services import FutClient
 from core.exceptions import APIError, RateLimitError
+from players.models import Player
 
 from .schemas import (
     ClubItem,
@@ -46,12 +47,26 @@ async def get_credits(request):
         raise HttpError(500, "Failed to get credits")
 
 
-@router.get("/players", response=PlayerListResponse)
-async def get_club_players(request):
-    """Get all players in club."""
+@router.get("/player-items", response=PlayerListResponse)
+async def get_club_player_items(request):
+    """Get all player items in club."""
     try:
         async with FutClient() as client:
             players_resp = await client.get_player_list()
+            
+            # Get asset IDs for database lookup
+            asset_ids = [p.asset_id for p in players_resp.players if p.asset_id]
+            
+            # Fetch player names from database
+            player_names = {}
+            if asset_ids:
+                db_players = Player.objects.filter(asset_id__in=asset_ids).values(
+                    "asset_id", "first_name", "last_name"
+                )
+                for db_player in db_players:
+                    name = f"{db_player.get('first_name', '')} {db_player.get('last_name', '')}".strip()
+                    if name:
+                        player_names[db_player["asset_id"]] = name
             
             player_items = [
                 PlayerItem(
@@ -61,7 +76,7 @@ async def get_club_players(request):
                     rating=player.rating,
                     rare_flag=player.rareflag,
                     preferred_position=player.preferred_position,
-                    name="Player",  # Name not available in raw API
+                    name=player_names.get(player.asset_id, "Unknown Player"),
                     untradeable=player.untradeable,
                 )
                 for player in players_resp.players

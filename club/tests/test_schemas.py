@@ -31,8 +31,8 @@ class ClubSchemaTestCase(TestCase):
         
         if data:
             response = CreditsResponse(**data)
-            self.assertIsNotNone(response.total)
-            self.assertIsNotNone(response.untradeable)
+            self.assertIsNotNone(response.credits)
+            self.assertIsNotNone(response.unopened_packs)
     
     def test_player_list_response_schema(self):
         """Test PlayerListResponse schema with player list data."""

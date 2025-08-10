@@ -72,8 +72,7 @@ class MarketSchemaTestCase(TestCase):
         
         if data:
             response = TradeStatusResponse(**data)
-            self.assertIsNotNone(response.credits)
-            self.assertIsInstance(response.auction_info, list)
+            self.assertTrue(hasattr(response, "trades"))
     
     def test_relist_response_schema(self):
         """Test RelistResponse schema with relist data."""

@@ -1,1 +1,6 @@
-{}
+{
+  "success": true,
+  "coins_earned": 350,
+  "total_credits": 123456,
+  "message": "Item sold successfully"
+}

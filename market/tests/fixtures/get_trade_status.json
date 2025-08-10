@@ -1,1 +1,18 @@
-{}
+{
+  "trades": [
+    {
+      "trade_id": 12345,
+      "status": "active",
+      "expires": 1640995200,
+      "current_bid": 5000,
+      "bid_count": 3
+    },
+    {
+      "trade_id": 67890,
+      "status": "sold",
+      "expires": 1640995200,
+      "current_bid": 8500,
+      "bid_count": 7
+    }
+  ]
+}

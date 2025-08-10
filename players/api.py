@@ -4,7 +4,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-import httpx
 from asgiref.sync import sync_to_async
 from django.db import transaction
 from ninja import Router
@@ -13,35 +12,26 @@ from ninja.errors import HttpError
 from players.models import Player, PlayerPrice, PlayerPriceHistory
 from players.services import PlayerDataService
 
-PLAYERS_API_URL = PlayerDataService.EA_PLAYERS_API_URL
-
 logger = logging.getLogger(__name__)
 router = Router()
 
 
 @router.post("/fetch-all")
 async def fetch_all_players(request):
-    """Fetch all players from EA API and store in database."""
+    """Fetch all players from FUT API using defid endpoint and store in database."""
     try:
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(PLAYERS_API_URL)
-            response.raise_for_status()
-            players_data = response.json()
-        
-        success = await sync_to_async(Player.objects.bulk_upsert)(players_data.get("items", []))
-        
-        if success:
-            return {
-                "success": True,
-                "message": f"Successfully fetched and stored {len(players_data.get('items', []))} players"
-            }
-        else:
-            raise HttpError(500, "Failed to store players in database")
-    
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error fetching players: {e}")
-        raise HttpError(503, f"Failed to fetch players from EA API: {str(e)}")
+        sid = request.headers.get("x-ut-sid")
+        if not sid:
+            raise HttpError(400, "Missing X-UT-SID header")
+
+        service = PlayerDataService(sid)
+        result = await service.fetch_all_players()
+
+        return {
+            "success": True,
+            "message": f"Fetched {result['total_players']} players",
+            "meta": {"last_offset": result["last_offset"], "fetch_date": result["fetch_date"]},
+        }
     except Exception as e:
         logger.error(f"Error fetching players: {e}")
         raise HttpError(500, f"An error occurred: {str(e)}")

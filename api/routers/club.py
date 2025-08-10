@@ -12,9 +12,12 @@ from ..schemas import (
     ClubItemSchema,
     CreditsResponseSchema,
     ItemOperationResponseSchema,
+    PlayerListItemSchema,
     PlayerListResponseSchema,
     QuickSellResponseSchema,
     SquadListResponseSchema,
+    SquadPlayerSchema,
+    SquadSchema,
 )
 
 router = APIRouter(prefix="/club", tags=["Club Management"])
@@ -45,22 +48,48 @@ async def get_player_list(client: Annotated[FutClient, Depends(get_fut_client)])
             result = await client.get_player_list()
 
             return PlayerListResponseSchema(
-                players=[
-                    {
-                        "asset_id": player.asset_id,
-                        "resource_id": player.resource_id,
-                        "first_name": player.first_name,
-                        "last_name": player.last_name,
-                        "common_name": player.common_name,
-                        "rating": player.rating,
-                        "position": player.position,
-                        "nation": player.nation,
-                        "league": player.league,
-                        "team": player.team,
-                    }
+                itemData=[
+                    PlayerListItemSchema(
+                        id=player.id,
+                        timestamp=player.timestamp,
+                        formation=player.formation,
+                        untradeable=player.untradeable,
+                        assetId=player.asset_id,
+                        rating=player.rating,
+                        dream=player.dream,
+                        itemType=player.item_type,
+                        resourceId=player.resource_id,
+                        owners=player.owners,
+                        discardValue=player.discard_value,
+                        cardsubtypeid=player.cardsubtypeid,
+                        lastSalePrice=player.last_sale_price,
+                        injuryType=player.injury_type,
+                        injuryGames=player.injury_games,
+                        preferredPosition=player.preferred_position,
+                        statsList=player.stats_list,
+                        lifetimeStats=player.lifetime_stats,
+                        contract=player.contract,
+                        teamid=player.teamid,
+                        rareflag=player.rareflag,
+                        playStyle=player.play_style,
+                        leagueId=player.league_id,
+                        loyaltyBonus=player.loyalty_bonus,
+                        pile=player.pile,
+                        nation=player.nation,
+                        resourceGameYear=player.resource_game_year,
+                        guidAssetId=player.guid_asset_id,
+                        attributeArray=player.attribute_array,
+                        skillmoves=player.skillmoves,
+                        weakfootabilitytypecode=player.weakfootabilitytypecode,
+                        preferredfoot=player.preferredfoot,
+                        possiblePositions=player.possible_positions,
+                        gender=player.gender,
+                        baseTraits=player.base_traits,
+                        iconTraitsPriorities=player.icon_traits_priorities,
+                        plusPlusRoles=player.plus_plus_roles,
+                    )
                     for player in result.players
-                ],
-                total_results=result.total_results,
+                ]
             )
 
     except SessionExpiredError as e:
@@ -78,23 +107,23 @@ async def get_squad_list(client: Annotated[FutClient, Depends(get_fut_client)]):
 
             return SquadListResponseSchema(
                 squads=[
-                    {
-                        "id": squad.id,
-                        "squad_name": squad.squad_name,
-                        "formation": squad.formation,
-                        "players": [
-                            {
-                                "id": player.id,
-                                "index": player.index,
-                                "asset_id": player.asset_id,
-                                "rating": player.rating,
-                                "position": player.position,
-                                "chemistry": player.chemistry,
-                            }
+                    SquadSchema(
+                        id=squad.id,
+                        squad_name=squad.squad_name,
+                        formation=squad.formation,
+                        players=[
+                            SquadPlayerSchema(
+                                id=player.id,
+                                index=player.index,
+                                asset_id=player.asset_id,
+                                rating=player.rating,
+                                position=player.position,
+                                chemistry=player.chemistry,
+                            )
                             for player in squad.players
                         ],
-                        "chemistry": squad.chemistry,
-                    }
+                        chemistry=squad.chemistry,
+                    )
                     for squad in result.squads
                 ]
             )

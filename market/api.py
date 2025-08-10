@@ -29,12 +29,32 @@ logger = logging.getLogger(__name__)
 router = Router()
 
 
+def _map_item_data(d: dict) -> ItemData:
+    """Map EA API item data to ItemData schema."""
+    return ItemData(
+        id=d.get("id", 0),
+        timestamp=d.get("timestamp", 0),
+        formation=d.get("formation", ""),
+        untradeable=d.get("untradeable", False),
+        asset_id=d.get("assetId", 0),
+        rating=d.get("rating", 0),
+        item_type=d.get("itemType", ""),
+        resource_id=d.get("resourceId", 0),
+        owners=d.get("owners", 0),
+        discard_value=d.get("discardValue", 0),
+        item_state=d.get("itemState", ""),
+        card_subtype_id=d.get("cardsubtypeid", d.get("cardSubTypeId", 0)),
+        rare_flag=d.get("rareflag", 0),
+    )
+
+
 @router.post("/search", response=SearchResult)
 async def search_market(request, criteria: SearchCriteria):
     """Search the transfer market."""
     try:
+        page = max(1, criteria.page)
         fut_criteria = PlayerSearchParameters(
-            page=criteria.page,
+            page=page,
             type=criteria.type,
             min_price=criteria.min_price,
             max_price=criteria.max_price,
@@ -130,7 +150,7 @@ async def get_watchlist(request):
             return [
                 WatchlistItem(
                     trade_id=item.trade_id,
-                    item_data=ItemData(**item.item_data) if isinstance(item.item_data, dict) else ItemData(**asdict(item.item_data)),
+                    item_data=_map_item_data(item.item_data if isinstance(item.item_data, dict) else asdict(item.item_data)),
                     auction_info=None,
                     watched=True,
                 )
@@ -158,7 +178,7 @@ async def get_tradepile(request):
                     id=item.id,
                     pile="trade",
                     trade_id=item.trade_id,
-                    item_data=ItemData(**item.item_data) if isinstance(item.item_data, dict) else ItemData(**asdict(item.item_data)),
+                    item_data=_map_item_data(item.item_data if isinstance(item.item_data, dict) else asdict(item.item_data)),
                     auction_info=None,
                     trade_state=item.trade_state,
                 )
@@ -185,11 +205,6 @@ async def get_trade_status(request, data: TradeStatusRequest):
                 status.trades = [t for t in status.trades if t.trade_id in data.trade_ids]
             
             return TradeStatusResponse(
-                credits=0,
-                bid_tokens=0,
-                currencies=[],
-                duplicate_item_id_list=[],
-                auction_info=[],
                 trades=status.trades,
             )
     

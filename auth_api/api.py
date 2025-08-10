@@ -6,6 +6,7 @@ from ninja import Router
 from ninja.errors import HttpError
 
 from auth_api.services import FutClient
+from core.constants import AppVersion, Platform
 from core.exceptions import (
     APIError,
     AuthenticationError,
@@ -37,8 +38,8 @@ async def login(request, data: LoginRequest):
         login_details = LoginDetails(
             email=data.email,
             password=data.password,
-            platform=data.platform,
-            app_version=data.app_version,
+            platform=Platform(data.platform),
+            app_version=AppVersion(data.app_version),
             secret_answer=data.secret_answer,
         )
 
@@ -81,8 +82,8 @@ async def login_with_2fa(request, data: LoginWith2FARequest):
         login_details = LoginDetails(
             email=data.email,
             password=data.password,
-            platform=data.platform,
-            app_version=data.app_version,
+            platform=Platform(data.platform),
+            app_version=AppVersion(data.app_version),
             secret_answer=data.secret_answer,
         )
 

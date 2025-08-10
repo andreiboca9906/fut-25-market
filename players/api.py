@@ -47,39 +47,6 @@ async def fetch_all_players(request):
         raise HttpError(500, f"An error occurred: {str(e)}")
 
 
-@router.post("/fetch-batch")
-async def fetch_players_batch(request, page: int = 1, page_size: int = 100):
-    """Fetch a batch of players from EA API."""
-    try:
-        
-        async with httpx.AsyncClient() as client:
-            response = await client.get(
-                PLAYERS_API_URL,
-                params={"page": page, "page_size": page_size}
-            )
-            response.raise_for_status()
-            players_data = response.json()
-        
-        success = await sync_to_async(Player.objects.bulk_upsert)(players_data.get("items", []))
-        
-        if success:
-            return {
-                "success": True,
-                "message": "Successfully fetched and stored batch of players",
-                "page": page,
-                "count": len(players_data.get("items", []))
-            }
-        else:
-            raise HttpError(500, "Failed to store players in database")
-    
-    except httpx.HTTPError as e:
-        logger.error(f"HTTP error fetching players batch: {e}")
-        raise HttpError(503, f"Failed to fetch players from EA API: {str(e)}")
-    except Exception as e:
-        logger.error(f"Error fetching players batch: {e}")
-        raise HttpError(500, f"An error occurred: {str(e)}")
-
-
 @router.post("/update-names")
 async def update_player_names(request, asset_id: int, first_name: str, last_name: str):
     """Update player names in database."""

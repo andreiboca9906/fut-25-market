@@ -153,7 +153,7 @@ async def quick_sell_item(request, item_id: int):
             
             return QuickSellResponse(
                 success=result.success,
-                credits_earned=result.credits_earned,
+                coins_earned=result.coins_earned,
                 total_credits=credits.credits,
                 message="Item sold successfully" if result.success else "Quick sell failed",
             )

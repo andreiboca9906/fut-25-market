@@ -9,7 +9,7 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
     platform: str = "ps5"
-    app_version: str = "WebApp"
+    app_version: str = "25.1.0"
     secret_answer: Optional[str] = None
     x_ut_sid: Optional[str] = None
 
@@ -18,7 +18,7 @@ class LoginWith2FARequest(BaseModel):
     email: EmailStr
     password: str
     platform: str = "ps5"
-    app_version: str = "WebApp"
+    app_version: str = "25.1.0"
     secret_answer: Optional[str] = None
     two_factor_code: str
     x_ut_sid: Optional[str] = None

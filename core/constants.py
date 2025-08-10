@@ -168,7 +168,7 @@ API_ENDPOINTS = {
     "add_to_watchlist": "/watchlist",
     "list_auction": "/auctionhouse",
     "trade_status": "/trade/status",
-    "club_items": "/club/tradepile",
+    "club_items": "/club",
     "images": "/items/images",
     "pack_open": "/purchased/items",
 }

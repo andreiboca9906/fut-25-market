@@ -53,7 +53,7 @@ class ClubItem(BaseModel):
 
 class QuickSellResponse(BaseModel):
     success: bool
-    credits_earned: int
+    coins_earned: int
     total_credits: int
     message: str
 

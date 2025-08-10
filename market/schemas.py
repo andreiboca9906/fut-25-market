@@ -17,7 +17,7 @@ class SearchCriteria(BaseModel):
     nationality: Optional[int] = None
     rare: Optional[bool] = None
     player_id: Optional[int] = None
-    page: int = 0
+    page: int = 1
 
 
 class AuctionInfo(BaseModel):
@@ -99,12 +99,7 @@ class TradeStatus(BaseModel):
 
 
 class TradeStatusResponse(BaseModel):
-    credits: int
-    bid_tokens: int
-    currencies: List[Dict[str, Any]]
-    duplicate_item_id_list: List[Any]
-    auction_info: List[AuctionInfo]
-    trades: Optional[List[TradeStatus]] = None
+    trades: List[TradeStatus]
 
 
 class RelistRequest(BaseModel):

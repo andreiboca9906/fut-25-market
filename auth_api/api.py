@@ -48,15 +48,11 @@ async def login(request, data: LoginRequest):
 
                 return LoginResponse(
                     session_id=response.session_id,
+                    nucleus_id=response.nucleus_id,
                     persona_id=response.persona_id,
-                    persona_name=response.persona_name,
-                    club_name=response.club_name,
-                    club_abbr=response.club_abbr,
-                    fut_web_phishing=response.fut_web_phishing,
-                    fut_sid=response.fut_sid,
-                    fut_sku=response.fut_sku,
-                    fut_pid=response.fut_pid,
-                    fut_phishing=response.fut_phishing,
+                    dob=response.dob,
+                    email=response.email,
+                    country=response.country,
                 )
 
             except TwoFactorCodeRequiredError:
@@ -95,20 +91,16 @@ async def login_with_2fa(request, data: LoginWith2FARequest):
         async with FutClient(x_ut_sid=data.x_ut_sid) as client:
             response = await client.login(
                 login_details,
-                two_factor_code_provider=two_factor_provider
+                two_factor_provider=two_factor_provider
             )
 
             return LoginResponse(
                 session_id=response.session_id,
+                nucleus_id=response.nucleus_id,
                 persona_id=response.persona_id,
-                persona_name=response.persona_name,
-                club_name=response.club_name,
-                club_abbr=response.club_abbr,
-                fut_web_phishing=response.fut_web_phishing,
-                fut_sid=response.fut_sid,
-                fut_sku=response.fut_sku,
-                fut_pid=response.fut_pid,
-                fut_phishing=response.fut_phishing,
+                dob=response.dob,
+                email=response.email,
+                country=response.country,
             )
 
     except AuthenticationError as e:

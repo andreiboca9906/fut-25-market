@@ -73,21 +73,29 @@ class BidResponse(BaseModel):
 class WatchlistItem(BaseModel):
     trade_id: int
     item_data: ItemData
-    auction_info: AuctionInfo
+    auction_info: Optional[AuctionInfo] = None
     watched: bool
 
 
 class TradePileItem(BaseModel):
-    id: str
-    pile: int
-    trade_id: int
+    id: int
+    pile: str
+    trade_id: Optional[int] = None
     item_data: ItemData
-    auction_info: AuctionInfo
+    auction_info: Optional[AuctionInfo] = None
     trade_state: str
 
 
 class TradeStatusRequest(BaseModel):
     trade_ids: List[int]
+
+
+class TradeStatus(BaseModel):
+    trade_id: int
+    status: str
+    expires: int
+    current_bid: int
+    bid_count: int
 
 
 class TradeStatusResponse(BaseModel):
@@ -96,6 +104,7 @@ class TradeStatusResponse(BaseModel):
     currencies: List[Dict[str, Any]]
     duplicate_item_id_list: List[Any]
     auction_info: List[AuctionInfo]
+    trades: Optional[List[TradeStatus]] = None
 
 
 class RelistRequest(BaseModel):

@@ -44,25 +44,6 @@ class BidResult:
 
 
 @dataclass
-class PlayerSearchParameters:
-    """Parameters for searching players."""
-
-    page: int = 1
-    level: Optional[str] = None
-    chemistry_style: Optional[int] = None
-    league: Optional[int] = None
-    nation: Optional[int] = None
-    position: Optional[str] = None
-    team: Optional[int] = None
-    resource_id: Optional[int] = None
-    asset_id: Optional[int] = None
-    min_price: Optional[int] = None
-    max_price: Optional[int] = None
-    min_buy: Optional[int] = None
-    max_buy: Optional[int] = None
-
-
-@dataclass
 class SearchResponse:
     """Response from search operations."""
 

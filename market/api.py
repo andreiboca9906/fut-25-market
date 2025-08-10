@@ -1,6 +1,7 @@
 """Market API endpoints using Django Ninja."""
 
 import logging
+from dataclasses import asdict
 from typing import List
 
 from ninja import Router
@@ -11,7 +12,6 @@ from core.exceptions import APIError, RateLimitError
 from core.fut_models.search import PlayerSearchParameters
 
 from .schemas import (
-    AuctionInfo,
     BidRequest,
     BidResponse,
     ItemData,
@@ -48,14 +48,17 @@ async def search_market(request, criteria: SearchCriteria):
         )
         
         async with FutClient() as client:
-            result = await client.search_market(fut_criteria)
+            result = await client.search_players(fut_criteria)
+            
+            page_size = len(result.auctions)
+            total_pages = (result.total_results + page_size - 1) // page_size if page_size else 0
             
             return SearchResult(
-                total_pages=result.total_pages,
+                total_pages=total_pages,
                 total_results=result.total_results,
                 page=result.page,
-                page_size=result.page_size,
-                items=[item.model_dump() for item in result.items],
+                page_size=page_size,
+                items=[asdict(a) for a in result.auctions],
             )
     
     except RateLimitError:
@@ -72,15 +75,15 @@ async def place_bid(request, bid_data: BidRequest):
     """Place a bid on an item."""
     try:
         async with FutClient() as client:
-            success = await client.place_bid(bid_data.trade_id, bid_data.bid_amount)
+            bid_result = await client.place_bid(bid_data.trade_id, bid_data.bid_amount)
             credits = await client.get_credits()
             
             return BidResponse(
-                success=success,
-                message="Bid placed successfully" if success else "Bid failed",
+                success=bid_result.success,
+                message="Bid placed successfully" if bid_result.success else "Bid failed",
                 trade_id=bid_data.trade_id,
                 bid_amount=bid_data.bid_amount,
-                credits=credits.total,
+                credits=credits.credits,
             )
     
     except RateLimitError:
@@ -97,21 +100,15 @@ async def buy_now(request, trade_id: int):
     """Buy an item immediately at buy-now price."""
     try:
         async with FutClient() as client:
-            trade_status = await client.get_trade_status([trade_id])
-            
-            if not trade_status.auction_info:
-                raise HttpError(404, "Trade not found")
-            
-            auction = trade_status.auction_info[0]
-            success = await client.buy_now(trade_id, auction.buy_now_price)
+            res = await client.buy_now(trade_id)
             credits = await client.get_credits()
             
             return BidResponse(
-                success=success,
-                message="Purchase successful" if success else "Purchase failed",
+                success=res.success,
+                message="Purchase successful" if res.success else "Purchase failed",
                 trade_id=trade_id,
-                bid_amount=auction.buy_now_price,
-                credits=credits.total,
+                bid_amount=res.current_bid,
+                credits=credits.credits,
             )
     
     except RateLimitError:
@@ -133,9 +130,9 @@ async def get_watchlist(request):
             return [
                 WatchlistItem(
                     trade_id=item.trade_id,
-                    item_data=ItemData(**item.item_data.model_dump()),
-                    auction_info=AuctionInfo(**item.auction_info.model_dump()),
-                    watched=item.watched,
+                    item_data=ItemData(**item.item_data) if isinstance(item.item_data, dict) else ItemData(**asdict(item.item_data)),
+                    auction_info=None,
+                    watched=True,
                 )
                 for item in watchlist
             ]
@@ -154,15 +151,15 @@ async def get_tradepile(request):
     """Get current trade pile."""
     try:
         async with FutClient() as client:
-            tradepile = await client.get_tradepile()
+            tradepile = await client.get_trade_pile()
             
             return [
                 TradePileItem(
                     id=item.id,
-                    pile=item.pile,
+                    pile="trade",
                     trade_id=item.trade_id,
-                    item_data=ItemData(**item.item_data.model_dump()),
-                    auction_info=AuctionInfo(**item.auction_info.model_dump()),
+                    item_data=ItemData(**item.item_data) if isinstance(item.item_data, dict) else ItemData(**asdict(item.item_data)),
+                    auction_info=None,
                     trade_state=item.trade_state,
                 )
                 for item in tradepile
@@ -182,17 +179,18 @@ async def get_trade_status(request, data: TradeStatusRequest):
     """Get status of specific trades."""
     try:
         async with FutClient() as client:
-            status = await client.get_trade_status(data.trade_ids)
+            status = await client.get_trade_status()
+            # Filter by requested trade_ids if provided
+            if data.trade_ids:
+                status.trades = [t for t in status.trades if t.trade_id in data.trade_ids]
             
             return TradeStatusResponse(
-                credits=status.credits,
-                bid_tokens=status.bid_tokens,
-                currencies=status.currencies,
-                duplicate_item_id_list=status.duplicate_item_id_list,
-                auction_info=[
-                    AuctionInfo(**auction.model_dump())
-                    for auction in status.auction_info
-                ],
+                credits=0,
+                bid_tokens=0,
+                currencies=[],
+                duplicate_item_id_list=[],
+                auction_info=[],
+                trades=status.trades,
             )
     
     except RateLimitError:
@@ -245,7 +243,7 @@ async def remove_from_tradepile(request, trade_id: int):
     """Remove item from trade pile."""
     try:
         async with FutClient() as client:
-            success = await client.remove_from_tradepile(trade_id)
+            success = await client.remove_from_trade_pile(trade_id)
             
             return {"success": success, "message": "Removed from trade pile" if success else "Failed to remove"}
     
@@ -263,21 +261,12 @@ async def relist_items(request, data: RelistRequest):
     """Relist items on transfer market."""
     try:
         async with FutClient() as client:
-            count = 0
-            for trade_id in data.trade_ids:
-                success = await client.relist_item(
-                    trade_id,
-                    start_price=data.start_price,
-                    buy_now_price=data.buy_now_price,
-                    duration=data.duration,
-                )
-                if success:
-                    count += 1
+            result = await client.relist_items()
             
             return RelistResponse(
-                success=count > 0,
-                message=f"Relisted {count} items",
-                relisted_count=count,
+                success=result.success,
+                message=f"Relisted {result.relisted_count} items",
+                relisted_count=result.relisted_count,
             )
     
     except RateLimitError:

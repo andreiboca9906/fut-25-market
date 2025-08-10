@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import httpx
+from asgiref.sync import sync_to_async
 from django.db import transaction
 from ninja import Router
 from ninja.errors import HttpError
@@ -28,7 +29,7 @@ async def fetch_all_players(request):
             response.raise_for_status()
             players_data = response.json()
         
-        success = Player.objects.bulk_upsert(players_data.get("items", []))
+        success = await sync_to_async(Player.objects.bulk_upsert)(players_data.get("items", []))
         
         if success:
             return {
@@ -59,7 +60,7 @@ async def fetch_players_batch(request, page: int = 1, page_size: int = 100):
             response.raise_for_status()
             players_data = response.json()
         
-        success = Player.objects.bulk_upsert(players_data.get("items", []))
+        success = await sync_to_async(Player.objects.bulk_upsert)(players_data.get("items", []))
         
         if success:
             return {
@@ -83,7 +84,7 @@ async def fetch_players_batch(request, page: int = 1, page_size: int = 100):
 async def update_player_names(request, asset_id: int, first_name: str, last_name: str):
     """Update player names in database."""
     try:
-        updated = Player.objects.filter(asset_id=asset_id).update(
+        updated = await sync_to_async(Player.objects.filter(asset_id=asset_id).update)(
             first_name=first_name,
             last_name=last_name
         )
@@ -106,18 +107,11 @@ async def update_player_names(request, asset_id: int, first_name: str, last_name
 async def get_players_sample(request, limit: int = 5):
     """Get a sample of players from database."""
     try:
-        players = Player.objects.filter(rating__gt=80).order_by("-rating")[:limit]
-        players = [
-            {
-                "id": player.id,
-                "asset_id": player.asset_id,
-                "rating": player.rating,
-                "preferred_position": player.preferred_position,
-                "first_name": player.first_name,
-                "last_name": player.last_name
-            }
-            for player in players
-        ]
+        players = await sync_to_async(list)(
+            Player.objects.filter(rating__gt=80).order_by("-rating")[:limit].values(
+                "id", "asset_id", "rating", "preferred_position", "first_name", "last_name"
+            )
+        )
         
         return {
             "success": True,
@@ -134,7 +128,7 @@ async def get_players_sample(request, limit: int = 5):
 async def get_players_summary(request):
     """Get summary statistics of players in database."""
     try:
-        summary = Player.objects.get_summary_stats
+        summary = await sync_to_async(Player.objects.get_summary_stats)()
         
         return {
             "success": True,
@@ -150,7 +144,8 @@ async def get_players_summary(request):
 async def update_player_price(request, player_id: int, platform: str, price: float, currency: str = "COINS"):
     """Update player price and add to history."""
     try:
-        with transaction.atomic():
+        @transaction.atomic
+        def _do_update():
             # Update or create current price
             PlayerPrice.objects.update_price(player_id, platform, price, currency)
             
@@ -161,6 +156,8 @@ async def update_player_price(request, player_id: int, platform: str, price: flo
                 price=price,
                 currency=currency
             )
+        
+        await sync_to_async(_do_update)()
         success = True
         
         if success:
@@ -184,7 +181,7 @@ async def get_player_prices(request, player_id: int, platform: Optional[str] = N
         if platform:
             query = query.filter(platform=platform)
         
-        prices = list(query.values())
+        prices = await sync_to_async(list)(query.values())
         
         return {
             "success": True,
@@ -211,7 +208,7 @@ async def get_price_history(request, player_id: int, platform: Optional[str] = N
         if platform:
             query = query.filter(platform=platform)
         
-        history = list(query.order_by("-fetched_at").values())
+        history = await sync_to_async(list)(query.order_by("-fetched_at").values())
         
         return {
             "success": True,

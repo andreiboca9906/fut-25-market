@@ -32,8 +32,9 @@ async def get_credits(request):
             credits = await client.get_credits()
             
             return CreditsResponse(
-                total=credits.total,
-                untradeable=credits.untradeable,
+                credits=credits.credits,
+                unopened_packs=credits.unopened_packs,
+                total_points=credits.total_points,
             )
     
     except RateLimitError:
@@ -50,7 +51,7 @@ async def get_club_players(request):
     """Get all players in club."""
     try:
         async with FutClient() as client:
-            players = await client.get_club_players()
+            players_resp = await client.get_player_list()
             
             player_items = [
                 PlayerItem(
@@ -58,12 +59,12 @@ async def get_club_players(request):
                     resource_id=player.resource_id,
                     asset_id=player.asset_id,
                     rating=player.rating,
-                    rare_flag=player.rare_flag,
+                    rare_flag=player.rareflag,
                     preferred_position=player.preferred_position,
-                    name=player.name,
+                    name="Player",  # Name not available in raw API
                     untradeable=player.untradeable,
                 )
-                for player in players
+                for player in players_resp.players
             ]
             
             return PlayerListResponse(
@@ -85,23 +86,23 @@ async def get_squads(request):
     """Get all squads."""
     try:
         async with FutClient() as client:
-            squads_data = await client.get_squads()
+            squads_data = await client.get_squad_list()
             
             squads = [
                 Squad(
                     id=squad.id,
-                    name=squad.name,
+                    name=squad.squad_name,
                     formation=squad.formation,
-                    rating=squad.rating,
-                    chemistry=squad.chemistry,
-                    players=squad.players,
+                    rating=0,  # Not provided by API
+                    chemistry=squad.chemistry or 0,
+                    players=[],  # Would need to map squad.players
                 )
                 for squad in squads_data.squads
             ]
             
             return SquadListResponse(
                 squads=squads,
-                active_squad_id=squads_data.active_squad_id,
+                active_squad_id=squads_data.squads[0].id if squads_data.squads else 0,
             )
     
     except RateLimitError:
@@ -125,10 +126,10 @@ async def get_club_items(request):
                     id=item.id,
                     resource_id=item.resource_id,
                     item_type=item.item_type,
-                    untradeable=item.untradeable,
-                    discard_value=item.discard_value,
-                    item_state=item.item_state,
-                    pile=item.pile,
+                    untradeable=False,  # Not directly available, needs computation
+                    discard_value=item.discardValue,
+                    item_state=item.tradeState or "none",
+                    pile=item.pile or 0,
                 )
                 for item in items
             ]
@@ -147,13 +148,13 @@ async def quick_sell_item(request, item_id: int):
     """Quick sell an item."""
     try:
         async with FutClient() as client:
-            result = await client.quick_sell(item_id)
+            result = await client.quick_sell_item(item_id)
             credits = await client.get_credits()
             
             return QuickSellResponse(
                 success=result.success,
                 credits_earned=result.credits_earned,
-                total_credits=credits.total,
+                total_credits=credits.credits,
                 message="Item sold successfully" if result.success else "Quick sell failed",
             )
     
@@ -171,7 +172,8 @@ async def send_to_club(request, item_id: int):
     """Send item to club."""
     try:
         async with FutClient() as client:
-            success = await client.send_to_club(item_id)
+            result = await client.send_to_club(item_id)
+            success = result.success
             
             return ItemOperationResponse(
                 success=success,
@@ -193,7 +195,8 @@ async def send_to_tradepile(request, item_id: int):
     """Send item to trade pile."""
     try:
         async with FutClient() as client:
-            success = await client.send_to_tradepile(item_id)
+            result = await client.send_to_trade_pile(item_id)
+            success = result.success
             
             return ItemOperationResponse(
                 success=success,

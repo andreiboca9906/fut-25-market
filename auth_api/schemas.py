@@ -26,13 +26,9 @@ class LoginWith2FARequest(BaseModel):
 
 class LoginResponse(BaseModel):
     session_id: str
+    nucleus_id: str
     persona_id: str
-    persona_name: str
-    club_name: str
-    club_abbr: str
-    fut_web_phishing: str
-    fut_sid: str
-    fut_sku: str
-    fut_pid: str
-    fut_phishing: str
+    dob: str | None = None
+    email: str | None = None
+    country: str | None = None
     message: str = "Login successful"

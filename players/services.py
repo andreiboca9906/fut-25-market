@@ -1,10 +1,11 @@
 """Player data services."""
 
-import time
+import asyncio
 from datetime import datetime
 from typing import Dict, List, Optional
 
-import requests
+import httpx
+from asgiref.sync import sync_to_async
 from django.db import transaction
 
 from players.models import Player
@@ -28,13 +29,13 @@ class PlayerDataService:
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
         self.request_count = 0
-        self.last_minute_start = time.time()
+        self.last_minute_start = 0
     
-    def _rate_limit(self):
+    async def _rate_limit(self):
         """Implement rate limiting."""
         self.request_count += 1
         
-        current_time = time.time()
+        current_time = asyncio.get_event_loop().time()
         elapsed = current_time - self.last_minute_start
         
         if elapsed >= 60:
@@ -42,16 +43,16 @@ class PlayerDataService:
             self.last_minute_start = current_time
         elif self.request_count >= self.RATE_LIMIT:
             wait_time = 60 - elapsed + 1
-            time.sleep(wait_time)
+            await asyncio.sleep(wait_time)
             self.request_count = 1
-            self.last_minute_start = time.time()
+            self.last_minute_start = asyncio.get_event_loop().time()
     
-    def fetch_players_batch(self, offset: int = 0, count: int = BATCH_SIZE) -> Optional[List[Dict]]:
+    async def fetch_players_batch(self, offset: int = 0, count: int = BATCH_SIZE) -> Optional[List[Dict]]:
         """Fetch a batch of players from FUT API."""
         if not self.sid:
             raise ValueError("SID is required for FUT API calls")
         
-        self._rate_limit()
+        await self._rate_limit()
         
         params = {
             "count": count,
@@ -61,12 +62,11 @@ class PlayerDataService:
         }
         
         try:
-            response = requests.get(
-                self.FUT_API_URL,
-                headers=self.headers,
-                params=params,
-                timeout=30
-            )
+            async with httpx.AsyncClient(headers=self.headers, timeout=30) as client:
+                response = await client.get(
+                    self.FUT_API_URL,
+                    params=params
+                )
             
             if response.status_code == 401:
                 data = response.json()
@@ -81,11 +81,11 @@ class PlayerDataService:
             
             return None
             
-        except requests.exceptions.RequestException as e:
+        except httpx.HTTPError as e:
             print(f"Request error at offset {offset}: {e}")
             return None
     
-    def fetch_all_players(self, checkpoint: Optional[Dict] = None) -> Dict:
+    async def fetch_all_players(self, checkpoint: Optional[Dict] = None) -> Dict:
         """Fetch all players from FUT API and save to database."""
         offset = checkpoint.get("offset", 0) if checkpoint else 0
         all_players = []
@@ -94,7 +94,7 @@ class PlayerDataService:
         batch_for_db = []
         
         while True:
-            batch = self.fetch_players_batch(offset)
+            batch = await self.fetch_players_batch(offset)
             
             if batch is None:
                 break
@@ -109,7 +109,8 @@ class PlayerDataService:
                 batch_for_db.extend(batch)
                 
                 if len(batch_for_db) >= 500:
-                    if Player.objects.bulk_upsert(batch_for_db):
+                    ok = await sync_to_async(Player.objects.bulk_upsert)(batch_for_db)
+                    if ok:
                         batch_for_db = []
                     else:
                         break
@@ -120,7 +121,7 @@ class PlayerDataService:
             offset += self.BATCH_SIZE
         
         if batch_for_db:
-            Player.objects.bulk_upsert(batch_for_db)
+            await sync_to_async(Player.objects.bulk_upsert)(batch_for_db)
         
         return {
             "total_players": len(all_players),
@@ -128,26 +129,29 @@ class PlayerDataService:
             "fetch_date": datetime.now().isoformat()
         }
     
-    def fetch_player_names(self) -> Optional[Dict]:
+    async def fetch_player_names(self) -> Optional[Dict]:
         """Fetch player names from EA API."""
         try:
-            response = requests.get(self.EA_PLAYERS_API_URL, timeout=30)
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.get(self.EA_PLAYERS_API_URL)
+                response.raise_for_status()
+                return response.json()
+        except httpx.HTTPError as e:
             print(f"Failed to fetch player names: {e}")
             return None
     
-    def update_player_names(self) -> Dict:
+    async def update_player_names(self) -> Dict:
         """Update player names in the database."""
-        data = self.fetch_player_names()
+        data = await self.fetch_player_names()
         if not data:
             raise Exception("Failed to fetch player data")
         
         total_updated = 0
         all_not_found = []
         
-        with transaction.atomic():
+        @transaction.atomic
+        def _do_update():
+            nonlocal total_updated, all_not_found
             players = data.get("Players", [])
             for player in players:
                 asset_id = player.get("id")
@@ -190,6 +194,11 @@ class PlayerDataService:
                             "type": "legend"
                         })
         
+        await sync_to_async(_do_update)()
+        
+        players = data.get("Players", [])
+        legend_players = data.get("LegendsPlayers", [])
+        
         return {
             "total_processed": len(players) + len(legend_players),
             "total_updated": total_updated,
@@ -197,22 +206,15 @@ class PlayerDataService:
             "not_found_players": all_not_found
         }
     
-    def get_sample_players(self, limit: int = 5) -> List[Dict]:
+    async def get_sample_players(self, limit: int = 5) -> List[Dict]:
         """Get a sample of players from the database."""
-        players = Player.objects.filter(rating__gt=80).order_by("-rating")[:limit]
-        
-        return [
-            {
-                "id": player.id,
-                "asset_id": player.asset_id,
-                "rating": player.rating,
-                "preferred_position": player.preferred_position,
-                "first_name": player.first_name,
-                "last_name": player.last_name
-            }
-            for player in players
-        ]
+        players = await sync_to_async(list)(
+            Player.objects.filter(rating__gt=80).order_by("-rating")[:limit].values(
+                "id", "asset_id", "rating", "preferred_position", "first_name", "last_name"
+            )
+        )
+        return players
     
-    def get_players_summary(self) -> Dict:
+    async def get_players_summary(self) -> Dict:
         """Get summary statistics of players in the database."""
-        return Player.objects.get_summary_stats()
+        return await sync_to_async(Player.objects.get_summary_stats)()

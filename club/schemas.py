@@ -6,8 +6,9 @@ from pydantic import BaseModel
 
 
 class CreditsResponse(BaseModel):
-    total: int
-    untradeable: int
+    credits: int
+    unopened_packs: int
+    total_points: int | None = None
 
 
 class PlayerItem(BaseModel):

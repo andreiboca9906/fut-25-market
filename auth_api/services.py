@@ -205,7 +205,6 @@ class FutClient:
                     buy_now_price=item["buyNowPrice"],
                     starting_bid=item["startingBid"],
                     bid_count=item.get("offers", 0),
-                    time_remaining=item["expires"],
                     expires=item["expires"],
                     seller_id=item.get("sellerId"),
                     seller_name=item.get("sellerName"),

@@ -299,6 +299,7 @@ class TradeWatch(models.Model):
     trade_id = models.CharField(max_length=50, unique=True)
     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="trade_watches", db_column="player_id")
     listed_price = models.DecimalField(max_digits=12, decimal_places=2)
+    expires_at = models.DateTimeField(null=True, blank=True)
     discovered_at = models.DateTimeField(default=timezone.now)
     checked_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING)
@@ -307,7 +308,7 @@ class TradeWatch(models.Model):
     class Meta:
         db_table = "players_tradewatch"
         indexes = [
-            models.Index(fields=["status", "discovered_at"]),
+            models.Index(fields=["expires_at", "status"]),
             models.Index(fields=["player", "status"]),
         ]
 

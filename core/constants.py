@@ -1,5 +1,6 @@
 """Constants and enums for FIFA Ultimate Team API."""
 
+from datetime import timedelta
 from enum import Enum
 
 
@@ -201,3 +202,12 @@ PLATFORMS = ["macOS", "Windows", "Linux"]
 CHROME_VERSIONS = ["138", "137", "136", "135"]
 
 REFERRER = "https://www.ea.com/"
+
+# Tier-based scan windows for price scraping
+TIER_SCAN_WINDOWS = {
+    "HOT": timedelta(minutes=5),
+    "TRENDING": timedelta(minutes=10),
+    "ACTIVE": timedelta(minutes=20),
+    "NORMAL": timedelta(minutes=45),
+    "COLD": timedelta(hours=2),
+}

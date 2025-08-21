@@ -17,7 +17,6 @@ class AuctionInfo:
     buy_now_price: int
     starting_bid: int
     bid_count: int
-    time_remaining: int
     expires: int
     seller_id: Optional[int] = None
     seller_name: Optional[str] = None

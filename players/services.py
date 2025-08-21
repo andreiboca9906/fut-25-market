@@ -12,6 +12,7 @@ from django.db import transaction
 from django.db.models import Avg, Count, Max, Min, StdDev
 from django.utils import timezone
 
+from core.constants import TIER_SCAN_WINDOWS
 from players.models import Player, PlayerPriceHistory, PlayerTier
 
 logger = logging.getLogger(__name__)
@@ -410,27 +411,27 @@ class TierBasedPriorityQueue:
     def __init__(self):
         self.tier_configs = {
             PlayerTier.HOT: {
-                "interval_minutes": 5,
+                "interval_minutes": TIER_SCAN_WINDOWS["HOT"].total_seconds() / 60,
                 "batch_size_min": 10,
                 "batch_size_max": 15,
             },
             PlayerTier.TRENDING: {
-                "interval_minutes": 10,
+                "interval_minutes": TIER_SCAN_WINDOWS["TRENDING"].total_seconds() / 60,
                 "batch_size_min": 20,
                 "batch_size_max": 30,
             },
             PlayerTier.ACTIVE: {
-                "interval_minutes": 20,
+                "interval_minutes": TIER_SCAN_WINDOWS["ACTIVE"].total_seconds() / 60,
                 "batch_size_min": 30,
                 "batch_size_max": 40,
             },
             PlayerTier.NORMAL: {
-                "interval_minutes": 45,
+                "interval_minutes": TIER_SCAN_WINDOWS["NORMAL"].total_seconds() / 60,
                 "batch_size_min": 40,
                 "batch_size_max": 50,
             },
             PlayerTier.COLD: {
-                "interval_minutes": 120,
+                "interval_minutes": TIER_SCAN_WINDOWS["COLD"].total_seconds() / 60,
                 "batch_size_min": 50,
                 "batch_size_max": 60,
             },

@@ -12,6 +12,7 @@ from django.db import connection
 from django.utils import timezone
 
 from auth_api.services import FutClient
+from core.constants import TIER_SCAN_WINDOWS
 from core.exceptions import RateLimitError, SessionExpiredError
 from core.fut_models.search import PlayerSearchParameters
 from market.services import MarketService
@@ -221,7 +222,7 @@ def human_sleep(base_seconds: float):
 
 @shared_task(bind=True, name="players.tasks.scrape_tier_prices")
 def scrape_tier_prices(self, tier: str, platform: str = "ps"):
-    """Scrape market prices for players in a specific tier."""
+    """Scrape market prices for players in a specific tier with pagination."""
 
     logger.info(f"Starting tier-based price scrape for {tier} tier", extra={"tier": tier, "platform": platform})
 
@@ -263,6 +264,10 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
 
         success_count = 0
         failure_count = 0
+        trades_collected = 0
+
+        # Calculate next scan time for this tier
+        next_scan = timezone.now() + TIER_SCAN_WINDOWS.get(tier, timedelta(hours=1))
 
         async with FutClient(x_ut_sid=sid) as client:
             for player_id in player_ids:
@@ -276,38 +281,77 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                     # Add human-like delay before request
                     await asyncio.sleep(human_delay(1.5, variance=0.2))
 
-                    params = PlayerSearchParameters(page=1, resource_id=player.resource_id)
-                    res = await client.search_players(params)
+                    # Collect auctions from multiple pages (max 5 pages)
+                    all_auctions = []
 
-                    # Process auctions
-                    if res.auctions:
-                        # Get cheapest buy now prices
-                        cheapest_auctions = sorted(
-                            [a for a in res.auctions if a.buy_now_price], key=lambda x: x.buy_now_price
-                        )[:5]
+                    for page in range(1, 6):  # Max 5 pages
+                        params = PlayerSearchParameters(page=page, resource_id=player.resource_id)
+                        res = await client.search_players(params)
 
-                        if cheapest_auctions:
-                            min_price = cheapest_auctions[0].buy_now_price
+                        if res.auctions:
+                            all_auctions.extend(res.auctions)
 
-                            # Store unverified price
+                            # Check if we should continue pagination
+                            should_continue = False
+                            for auction in res.auctions:
+                                if auction.expires:
+                                    # Convert expires (seconds) to timestamp
+                                    expires_at = timezone.now() + timedelta(seconds=auction.expires)
+
+                                    # Only continue if there might be auctions expiring before next scan
+                                    if expires_at < next_scan:
+                                        should_continue = True
+                                        break
+
+                            # Stop pagination if no more relevant auctions
+                            if not should_continue or len(res.auctions) < 21:  # Less than full page
+                                break
+
+                            # Add delay between pages
+                            await asyncio.sleep(human_delay(0.8, variance=0.2))
+                        else:
+                            break  # No more results
+
+                    # Process collected auctions
+                    if all_auctions:
+                        # Filter auctions with buy now prices
+                        buyable_auctions = [a for a in all_auctions if a.buy_now_price]
+
+                        if buyable_auctions:
+                            # Find minimum price for current market value
+                            sorted_by_price = sorted(buyable_auctions, key=lambda x: x.buy_now_price)
+                            min_price = sorted_by_price[0].buy_now_price
+
+                            # Store current minimum price
                             await sync_to_async(PlayerPrice.objects.update_or_create)(
                                 player=player,
                                 platform=platform,
                                 defaults={"current_price": Decimal(min_price), "last_updated": timezone.now()},
                             )
 
-                            # Create trade watches for verification
-                            for auction in cheapest_auctions[:3]:  # Track top 3 for verification
-                                await sync_to_async(TradeWatch.objects.get_or_create)(
-                                    trade_id=auction.trade_id,
-                                    defaults={
-                                        "player": player,
-                                        "listed_price": Decimal(auction.buy_now_price),
-                                        "discovered_at": timezone.now(),
-                                    },
-                                )
+                            # Track ALL auctions expiring before next scan
+                            for auction in buyable_auctions:
+                                if auction.expires:
+                                    expires_at = timezone.now() + timedelta(seconds=auction.expires)
 
-                            # Add to price history
+                                    # Track auction if it expires before next scan
+                                    if expires_at < next_scan:
+                                        created = await sync_to_async(
+                                            lambda: TradeWatch.objects.get_or_create(
+                                                trade_id=str(auction.trade_id),
+                                                defaults={
+                                                    "player": player,
+                                                    "listed_price": Decimal(auction.buy_now_price),
+                                                    "expires_at": expires_at,
+                                                    "discovered_at": timezone.now(),
+                                                },
+                                            )[1]
+                                        )()
+
+                                        if created:
+                                            trades_collected += 1
+
+                            # Add to price history (unverified)
                             await sync_to_async(PlayerPriceHistory.objects.create)(
                                 player=player,
                                 platform=platform,
@@ -318,12 +362,13 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
 
                             success_count += 1
                             logger.debug(
-                                "Price scraped",
+                                "Price scraped with pagination",
                                 extra={
                                     "tier": tier,
                                     "player_id": player_id,
                                     "price": min_price,
-                                    "listings": len(res.auctions),
+                                    "total_listings": len(all_auctions),
+                                    "trades_tracked": trades_collected,
                                 },
                             )
                     else:
@@ -348,6 +393,7 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                 "success_count": success_count,
                 "failure_count": failure_count,
                 "total": len(player_ids),
+                "trades_collected": trades_collected,
             },
         )
 
@@ -355,28 +401,28 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
 
 
 @shared_task(bind=True, name="players.tasks.verify_pending_trades")
-def verify_pending_trades(self, batch_size: int = 20):
-    """Verify pending trades to confirm actual sale prices."""
+def verify_pending_trades(self, batch_size: int = 60):
+    """Verify pending trades that have expired to confirm actual sale prices."""
 
     logger.info("Starting trade verification task")
 
     async def _run():
-        # Get trades older than 5 minutes
-        cutoff_time = timezone.now() - timedelta(minutes=5)
+        # Get trades where expires_at < now() (auctions that have ended)
+        current_time = timezone.now()
 
         pending_trades = await sync_to_async(
             lambda: list(
-                TradeWatch.objects.filter(status=TradeWatch.PENDING, discovered_at__lt=cutoff_time).select_related(
+                TradeWatch.objects.filter(expires_at__lt=current_time, status=TradeWatch.PENDING).select_related(
                     "player"
                 )[:batch_size]
             )
         )()
 
         if not pending_trades:
-            logger.info("No pending trades to verify")
+            logger.info("No expired trades to verify")
             return
 
-        logger.info(f"Verifying {len(pending_trades)} trades")
+        logger.info(f"Verifying {len(pending_trades)} expired trades")
 
         # Get active session
         with connection.cursor() as cursor:
@@ -398,82 +444,94 @@ def verify_pending_trades(self, batch_size: int = 20):
             # Create market service
             market_service = MarketService(client.session, sid)
 
-            # Get all trade IDs to check
-            trade_ids = [trade.trade_id for trade in pending_trades]
+            # Process in batches of 20 (API limit)
+            for i in range(0, len(pending_trades), 20):
+                batch = pending_trades[i : i + 20]
+                trade_ids = [trade.trade_id for trade in batch]
 
-            # Add human-like delay before batch request
-            await asyncio.sleep(human_delay(1.0, variance=0.2))
+                # Add human-like delay before batch request
+                await asyncio.sleep(human_delay(1.0, variance=0.2))
 
-            try:
-                # Get status for all trades in one API call
-                trade_statuses = await market_service.get_trade_status(trade_ids)
+                try:
+                    # Get status for trades in this batch
+                    trade_statuses = await market_service.get_trade_status(trade_ids)
 
-                verified_count = 0
-                sold_count = 0
-                expired_count = 0
-                active_count = 0
+                    verified_count = 0
+                    sold_count = 0
+                    expired_count = 0
+                    active_count = 0
 
-                # Process each trade based on its status
-                for trade in pending_trades:
-                    trade_id_str = str(trade.trade_id)
+                    # Process each trade based on its status
+                    for trade in batch:
+                        trade_id_str = str(trade.trade_id)
 
-                    if trade_id_str in trade_statuses:
-                        status_info = trade_statuses[trade_id_str]
+                        if trade_id_str in trade_statuses:
+                            status_info = trade_statuses[trade_id_str]
 
-                        if status_info.status == "sold":
-                            trade.status = TradeWatch.SOLD
-                            sold_count += 1
+                            if status_info.status == "sold":
+                                trade.status = TradeWatch.SOLD
+                                sold_count += 1
 
-                            # Update verified price
-                            await sync_to_async(PlayerPrice.objects.filter(player_id=trade.player_id).update)(
-                                current_price=trade.listed_price, last_updated=timezone.now()
-                            )
+                                # Update current_price with verified sold price
+                                await sync_to_async(PlayerPrice.objects.filter(player_id=trade.player_id).update)(
+                                    current_price=trade.listed_price, last_updated=timezone.now()
+                                )
 
-                            # Mark in history as verified
-                            await sync_to_async(PlayerPriceHistory.objects.create)(
-                                player=trade.player,
-                                platform="ps",
-                                price=trade.listed_price,
-                                trade_id=trade.trade_id,
-                                is_verified=True,
-                                fetched_at=timezone.now(),
-                            )
+                                # Record verified sale in history
+                                await sync_to_async(PlayerPriceHistory.objects.create)(
+                                    player=trade.player,
+                                    platform="ps",
+                                    price=trade.listed_price,
+                                    trade_id=trade.trade_id,
+                                    is_verified=True,
+                                    fetched_at=timezone.now(),
+                                )
 
-                            verified_count += 1
+                                verified_count += 1
 
-                        elif status_info.status == "expired":
+                                logger.debug(
+                                    "Trade verified as sold",
+                                    extra={
+                                        "trade_id": trade.trade_id,
+                                        "player_id": trade.player_id,
+                                        "price": float(trade.listed_price),
+                                    },
+                                )
+
+                            elif status_info.status == "expired":
+                                trade.status = TradeWatch.EXPIRED
+                                expired_count += 1
+
+                            elif status_info.status == "active":
+                                # Still active even though expires_at passed - check again later
+                                trade.status = TradeWatch.ACTIVE
+                                active_count += 1
+
+                        else:
+                            # Trade not found in response - mark as expired
                             trade.status = TradeWatch.EXPIRED
                             expired_count += 1
 
-                        elif status_info.status == "active":
-                            trade.status = TradeWatch.ACTIVE
-                            active_count += 1
+                        trade.checked_at = timezone.now()
+                        await sync_to_async(trade.save)()
 
-                    else:
-                        # Trade not found in response - likely expired or very old
-                        trade.status = TradeWatch.EXPIRED
-                        expired_count += 1
+                    logger.info(
+                        "Batch verification completed",
+                        extra={
+                            "batch_size": len(batch),
+                            "verified_count": verified_count,
+                            "sold_count": sold_count,
+                            "expired_count": expired_count,
+                            "active_count": active_count,
+                        },
+                    )
 
-                    trade.checked_at = timezone.now()
-                    await sync_to_async(trade.save)()
-
-                logger.info(
-                    "Trade verification completed",
-                    extra={
-                        "verified_count": verified_count,
-                        "sold_count": sold_count,
-                        "expired_count": expired_count,
-                        "active_count": active_count,
-                        "total": len(pending_trades),
-                    },
-                )
-
-            except Exception as e:
-                logger.error("Error verifying trades batch", extra={"error": str(e), "trade_count": len(trade_ids)})
-                # Fall back to marking all as needing re-check
-                for trade in pending_trades:
-                    trade.checked_at = timezone.now()
-                    await sync_to_async(trade.save)()
+                except Exception as e:
+                    logger.error("Error verifying trades batch", extra={"error": str(e), "trade_count": len(trade_ids)})
+                    # Mark batch as checked but keep pending status
+                    for trade in batch:
+                        trade.checked_at = timezone.now()
+                        await sync_to_async(trade.save)()
 
     asyncio.run(_run())
 

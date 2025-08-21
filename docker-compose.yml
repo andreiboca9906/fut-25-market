@@ -30,5 +30,43 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  redis:
+    image: redis:7
+    container_name: redis-eafc25
+    ports:
+      - "6379:6379"
+
+  celery-worker:
+    build: .
+    container_name: celery-worker-eafc25
+    command: celery -A fut_market worker -l info -Q prices
+    depends_on:
+      - redis
+      - postgres-local
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - DB_HOST=postgres-local
+      - DB_NAME=eafc25
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+
+  celery-beat:
+    build: .
+    container_name: celery-beat-eafc25
+    command: celery -A fut_market beat -l info
+    depends_on:
+      - redis
+      - postgres-local
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+      - DB_HOST=postgres-local
+      - DB_NAME=eafc25
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_PORT=5432
+
 volumes:
   eafc25-local-pg-volume:

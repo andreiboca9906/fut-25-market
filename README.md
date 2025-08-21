@@ -157,6 +157,34 @@ Most endpoints require the `X-UT-SID` header containing your session ID. This he
 
 The session ID can be obtained through the login process or external authentication methods.
 
+## Price Scraping (Celery)
+
+### Local Testing
+```bash
+# Start Redis
+docker-compose up -d redis
+
+# Run worker (runs for all players, use below ones instead for testing)
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q prices
+
+# Run scheduler (separate terminal)
+./scripts/load-env.sh uv run celery -A fut_market beat -l info
+
+# Test with 10 players only
+./scripts/load-env.sh env TEST_MODE=true uv run celery -A fut_market worker -l info -Q prices
+```
+
+### Production Deployment
+```bash
+# Start all services
+docker-compose up -d
+
+# Or manually on VM:
+redis-server &
+celery -A fut_market worker -l info -Q prices --detach
+celery -A fut_market beat -l info --detach
+```
+
 ## Development
 
 The project uses `ruff` for linting and formatting:

@@ -146,3 +146,59 @@ NINJA_PAGINATION_CLASS = "ninja.pagination.LimitOffsetPagination"
 
 # Async settings
 ASGI_APPLICATION = "fut_market.asgi.application"
+
+# Logging settings
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message} | job_id={job_id} resource_id={resource_id} error={error}",
+            "style": "{",
+        },
+        "market_scraper": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message} | job_id={job_id} resource_id={resource_id} error={error}",
+            "style": "{",
+        },
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+        "market_scraper_console": {
+            "class": "logging.StreamHandler",
+            "formatter": "market_scraper",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+    "loggers": {
+        "market.scraper": {
+            "handlers": ["market_scraper_console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+}
+
+# Celery settings
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
+CELERY_TASK_ALWAYS_EAGER = False
+CELERY_TASK_TIME_LIMIT = 60
+CELERY_TASK_SOFT_TIME_LIMIT = 55
+CELERY_WORKER_CONCURRENCY = int(os.getenv("CELERY_WORKER_CONCURRENCY", "2"))
+CELERY_BEAT_SCHEDULE = {
+    "scrape-player-prices": {
+        "task": "players.tasks.scrape_market_prices",
+        "schedule": int(os.getenv("SCRAPE_INTERVAL_SECONDS", "300")),
+        "options": {"queue": "prices"},
+    }
+}

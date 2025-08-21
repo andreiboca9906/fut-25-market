@@ -9,7 +9,7 @@ from django.db import transaction
 from ninja import Router
 from ninja.errors import HttpError
 
-from players.models import Player, PlayerPrice, PlayerPriceHistory
+from players.models import Player, PlayerPrice, PlayerPriceHistory, PriceScrapeJob
 from players.services import PlayerDataService
 
 logger = logging.getLogger(__name__)
@@ -123,7 +123,7 @@ async def get_player_prices(request, player_id: int, platform: Optional[str] = N
         if platform:
             query = query.filter(platform=platform)
 
-        prices = await sync_to_async(lambda: query.values())()
+        prices = await sync_to_async(lambda: list(query.values()))()
 
         return {"success": True, "player_id": player_id, "prices": prices}
 
@@ -143,10 +143,95 @@ async def get_price_history(request, player_id: int, platform: Optional[str] = N
         if platform:
             query = query.filter(platform=platform)
 
-        history = await sync_to_async(lambda: query.order_by("-fetched_at").values())()
+        history = await sync_to_async(lambda: list(query.order_by("-fetched_at").values()))()
 
         return {"success": True, "player_id": player_id, "days": days, "count": len(history), "history": history}
 
     except Exception as e:
         logger.error(f"Error getting price history: {e}")
+        raise HttpError(500, f"An error occurred: {str(e)}")
+
+
+@router.get("/prices/{player_id}")
+async def get_player_price_series(request, player_id: int, platform: str = "ps", days: int = 7):
+    """Get latest price and history for a player."""
+    try:
+        # Get latest price
+        current_price = await sync_to_async(
+            lambda: PlayerPrice.objects.filter(player_id=player_id, platform=platform).first()
+        )()
+
+        # Get price history
+        since = datetime.now() - timedelta(days=days)
+        history = await sync_to_async(
+            lambda: list(
+                PlayerPriceHistory.objects.filter(player_id=player_id, platform=platform, fetched_at__gte=since)
+                .order_by("fetched_at")
+                .values("fetched_at", "price")
+            )
+        )()
+
+        series = [{"t": h["fetched_at"].isoformat(), "v": float(h["price"])} for h in history]
+
+        return {
+            "success": True,
+            "player_id": player_id,
+            "platform": platform,
+            "current_price": float(current_price.current_price) if current_price else None,
+            "last_updated": current_price.last_updated.isoformat() if current_price else None,
+            "series": series,
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting player price series: {e}")
+        raise HttpError(500, f"An error occurred: {str(e)}")
+
+
+@router.get("/price-stats")
+async def get_price_stats(request):
+    """Get price statistics and scraping health."""
+    try:
+        # Recent job summary
+        recent_job = await sync_to_async(lambda: PriceScrapeJob.objects.order_by("-started_at").first())()
+
+        # Stale prices count (older than 1 hour)
+        one_hour_ago = datetime.now() - timedelta(hours=1)
+        stale_count = await sync_to_async(lambda: PlayerPrice.objects.filter(last_updated__lt=one_hour_ago).count())()
+
+        # Total prices tracked
+        total_prices = await sync_to_async(lambda: PlayerPrice.objects.count())()
+
+        return {
+            "success": True,
+            "total_prices_tracked": total_prices,
+            "stale_prices": stale_count,
+            "last_job": {
+                "id": recent_job.id,
+                "status": recent_job.status,
+                "started_at": recent_job.started_at.isoformat(),
+                "ended_at": recent_job.ended_at.isoformat() if recent_job.ended_at else None,
+                "success_count": recent_job.success_count,
+                "failure_count": recent_job.failure_count,
+                "total_targets": recent_job.total_targets,
+                "rate_limit_hits": recent_job.rate_limit_hits,
+            }
+            if recent_job
+            else None,
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting price stats: {e}")
+        raise HttpError(500, f"An error occurred: {str(e)}")
+
+
+@router.get("/scrape-jobs")
+async def get_scrape_jobs(request, limit: int = 10):
+    """Get recent scrape job runs."""
+    try:
+        jobs = await sync_to_async(lambda: list(PriceScrapeJob.objects.order_by("-started_at")[:limit].values()))()
+
+        return {"success": True, "jobs": jobs}
+
+    except Exception as e:
+        logger.error(f"Error getting scrape jobs: {e}")
         raise HttpError(500, f"An error occurred: {str(e)}")

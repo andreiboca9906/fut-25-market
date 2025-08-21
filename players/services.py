@@ -1,6 +1,7 @@
 """Player data services."""
 
 import asyncio
+import logging
 from datetime import datetime
 from typing import Dict, List, Optional
 
@@ -9,6 +10,8 @@ from asgiref.sync import sync_to_async
 from django.db import transaction
 
 from players.models import Player
+
+logger = logging.getLogger(__name__)
 
 
 class PlayerDataService:
@@ -74,7 +77,7 @@ class PlayerDataService:
             return None
 
         except httpx.HTTPError as e:
-            print(f"Request error at offset {offset}: {e}")
+            logger.error(f"Request error at offset {offset}: {e}", exc_info=True)
             return None
 
     async def fetch_all_players(self, checkpoint: Optional[Dict] = None) -> Dict:
@@ -125,7 +128,7 @@ class PlayerDataService:
                 response.raise_for_status()
                 return response.json()
         except httpx.HTTPError as e:
-            print(f"Failed to fetch player names: {e}")
+            logger.error(f"Failed to fetch player names: {e}", exc_info=True)
             return None
 
     async def update_player_names(self) -> Dict:

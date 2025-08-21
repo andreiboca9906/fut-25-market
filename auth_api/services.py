@@ -1,10 +1,13 @@
 """Authentication and session management services."""
 
+import logging
 import random
 from typing import List, Optional, Protocol
 
 import httpx
 from fake_useragent import UserAgent
+
+logger = logging.getLogger(__name__)
 
 from core.constants import API_ENDPOINTS, PLATFORMS, get_base_headers
 from core.exceptions import (
@@ -219,7 +222,10 @@ class FutClient:
             )
 
         except httpx.HTTPStatusError as e:
-            raise APIError(f"Search failed: {e.response.text}", e.response.status_code)
+            if e.response.status_code == 429:
+                raise RateLimitError("Rate limit exceeded")
+            logger.error(f"HTTP error in search_players: {e}", exc_info=True)
+            raise APIError(f"Search failed: {e}", e.response.status_code)
 
     async def place_bid(self, trade_id: int, bid_amount: int) -> BidResult:
         """Place a bid on an auction."""

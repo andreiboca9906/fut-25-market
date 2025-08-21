@@ -14,3 +14,10 @@
    - Auth services: Authentication, login, session management
    - Market services: Trading, auctions, trade status, market operations  
    - Player services: Player data, pricing, tiers, hotness calculations
+9. An external process controls session ids of the below table, that we use in this repo. So do not implement something similar in this repo
+Used for managing EA account sessions. This table is used by the session pool for load distribution:
+- `id`: Primary key, account ID
+- `email`: EA account email
+- `session_id`: EA session token (updated by external auth process)
+- `is_expired`: Boolean flag for session validity
+- `last_updated`: Timestamp of last session update

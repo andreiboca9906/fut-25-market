@@ -34,8 +34,6 @@ from core.fut_models.club import (
     SquadListResponse,
     SquadPlayer,
     TradePileItem,
-    TradeStatus,
-    TradeStatusResponse,
     WatchlistItem,
 )
 from core.fut_models.player import PlayerDefinition, PlayerListResponse
@@ -611,34 +609,6 @@ class FutClient:
 
         except httpx.HTTPStatusError:
             return False
-
-    async def get_trade_status(self) -> TradeStatusResponse:
-        """Get trade status for active auctions."""
-        if not self.x_ut_sid:
-            raise SessionExpiredError("Not authenticated")
-
-        try:
-            response = await self.session.get(f"{self.base_url}{API_ENDPOINTS['trade_status']}")
-
-            self._check_response_auth(response)
-            response.raise_for_status()
-            data = response.json()
-
-            trades = []
-            for trade in data.get("auctionInfo", []):
-                status = TradeStatus(
-                    trade_id=trade["tradeId"],
-                    status=trade.get("tradeState", ""),
-                    expires=trade["expires"],
-                    current_bid=trade["currentBid"],
-                    bid_count=trade["bidCount"],
-                )
-                trades.append(status)
-
-            return TradeStatusResponse(trades=trades)
-
-        except httpx.HTTPStatusError as e:
-            raise APIError(f"Get trade status failed: {e.response.text}", e.response.status_code)
 
 
 class SessionManager:

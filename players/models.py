@@ -236,6 +236,8 @@ class PlayerPriceHistory(models.Model):
     price = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default="COINS")
     fetched_at = models.DateTimeField(default=timezone.now)
+    trade_id = models.CharField(max_length=50, null=True, blank=True)
+    is_verified = models.BooleanField(default=False)
 
     class Meta:
         db_table = "player_price_history"
@@ -278,3 +280,91 @@ class PriceScrapeFailure(models.Model):
 
     def __str__(self):
         return f"Job {self.job_id} - Player {self.player_id}: {self.reason}"
+
+
+class TradeWatch(models.Model):
+    PENDING = "pending"
+    SOLD = "sold"
+    EXPIRED = "expired"
+    ACTIVE = "active"
+
+    STATUS_CHOICES = [
+        (PENDING, "Pending"),
+        (SOLD, "Sold"),
+        (EXPIRED, "Expired"),
+        (ACTIVE, "Active"),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    trade_id = models.CharField(max_length=50, unique=True)
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name="trade_watches", db_column="player_id")
+    listed_price = models.DecimalField(max_digits=12, decimal_places=2)
+    discovered_at = models.DateTimeField(default=timezone.now)
+    checked_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=PENDING)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "players_tradewatch"
+        indexes = [
+            models.Index(fields=["status", "discovered_at"]),
+            models.Index(fields=["player", "status"]),
+        ]
+
+    def __str__(self):
+        return f"Trade {self.trade_id} - Player {self.player_id}: {self.status}"
+
+
+class PlayerTier(models.Model):
+    HOT = "HOT"
+    TRENDING = "TRENDING"
+    ACTIVE = "ACTIVE"
+    NORMAL = "NORMAL"
+    COLD = "COLD"
+
+    TIER_CHOICES = [
+        (HOT, "Hot"),
+        (TRENDING, "Trending"),
+        (ACTIVE, "Active"),
+        (NORMAL, "Normal"),
+        (COLD, "Cold"),
+    ]
+
+    player = models.OneToOneField(
+        Player, on_delete=models.CASCADE, primary_key=True, related_name="tier", db_column="player_id"
+    )
+    hotness_score = models.FloatField(default=0)
+    tier = models.CharField(max_length=20, choices=TIER_CHOICES, default=COLD)
+    last_calculated = models.DateTimeField(default=timezone.now)
+    volatility_score = models.FloatField(default=0)
+    volume_score = models.FloatField(default=0)
+    trend_score = models.FloatField(default=0)
+    event_score = models.FloatField(default=0)
+
+    class Meta:
+        db_table = "players_playertier"
+        indexes = [
+            models.Index(fields=["tier", "hotness_score"]),
+        ]
+
+    def __str__(self):
+        return f"{self.player} - {self.tier} (Score: {self.hotness_score})"
+
+
+class SessionUsage(models.Model):
+    id = models.AutoField(primary_key=True)
+    session_id = models.CharField(max_length=100, unique=True)
+    requests_count = models.IntegerField(default=0)
+    last_used = models.DateTimeField(null=True, blank=True)
+    cooldown_until = models.DateTimeField(null=True, blank=True)
+    is_healthy = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = "scraper_sessionusage"
+        indexes = [
+            models.Index(fields=["is_healthy", "cooldown_until"]),
+        ]
+
+    def __str__(self):
+        return f"Session {self.session_id} - Requests: {self.requests_count}"

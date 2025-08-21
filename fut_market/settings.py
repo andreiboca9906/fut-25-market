@@ -195,10 +195,89 @@ CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_TIME_LIMIT = 60
 CELERY_TASK_SOFT_TIME_LIMIT = 55
 CELERY_WORKER_CONCURRENCY = int(os.getenv("CELERY_WORKER_CONCURRENCY", "2"))
+CELERY_TASK_ROUTES = {
+    "players.tasks.scrape_tier_prices": {"queue": "tier_{tier}"},
+    "players.tasks.verify_pending_trades": {"queue": "verification"},
+    "players.tasks.recalculate_player_tiers": {"queue": "maintenance"},
+    "players.tasks.cleanup_expired_trades": {"queue": "maintenance"},
+}
+
+CELERY_TASK_QUEUES = {
+    "tier_hot": {
+        "exchange": "prices",
+        "exchange_type": "direct",
+        "routing_key": "tier.hot",
+    },
+    "tier_trending": {
+        "exchange": "prices",
+        "exchange_type": "direct",
+        "routing_key": "tier.trending",
+    },
+    "tier_active": {
+        "exchange": "prices",
+        "exchange_type": "direct",
+        "routing_key": "tier.active",
+    },
+    "tier_normal": {
+        "exchange": "prices",
+        "exchange_type": "direct",
+        "routing_key": "tier.normal",
+    },
+    "tier_cold": {
+        "exchange": "prices",
+        "exchange_type": "direct",
+        "routing_key": "tier.cold",
+    },
+    "verification": {
+        "exchange": "verification",
+        "exchange_type": "direct",
+        "routing_key": "verification",
+    },
+    "maintenance": {
+        "exchange": "maintenance",
+        "exchange_type": "direct",
+        "routing_key": "maintenance",
+    },
+}
+
+from celery.schedules import crontab
+
 CELERY_BEAT_SCHEDULE = {
-    "scrape-player-prices": {
-        "task": "players.tasks.scrape_market_prices",
-        "schedule": int(os.getenv("SCRAPE_INTERVAL_SECONDS", "300")),
-        "options": {"queue": "prices"},
-    }
+    "scrape-hot-players": {
+        "task": "players.tasks.scrape_tier_prices",
+        "schedule": crontab(minute="*/5"),
+        "kwargs": {"tier": "HOT"},
+    },
+    "scrape-trending-players": {
+        "task": "players.tasks.scrape_tier_prices",
+        "schedule": crontab(minute="*/10"),
+        "kwargs": {"tier": "TRENDING"},
+    },
+    "scrape-active-players": {
+        "task": "players.tasks.scrape_tier_prices",
+        "schedule": crontab(minute="*/20"),
+        "kwargs": {"tier": "ACTIVE"},
+    },
+    "scrape-normal-players": {
+        "task": "players.tasks.scrape_tier_prices",
+        "schedule": crontab(minute="*/45"),
+        "kwargs": {"tier": "NORMAL"},
+    },
+    "scrape-cold-players": {
+        "task": "players.tasks.scrape_tier_prices",
+        "schedule": crontab(minute="0", hour="*/2"),
+        "kwargs": {"tier": "COLD"},
+    },
+    "verify-trades": {
+        "task": "players.tasks.verify_pending_trades",
+        "schedule": crontab(minute="*/5"),
+    },
+    "recalculate-hotness": {
+        "task": "players.tasks.recalculate_player_tiers",
+        "schedule": crontab(minute="0"),
+    },
+    "cleanup-old-trades": {
+        "task": "players.tasks.cleanup_expired_trades",
+        "schedule": crontab(minute="0", hour="*/6"),
+    },
 }

@@ -25,8 +25,12 @@ from players.models import (
     TradeWatch,
 )
 from players.services import CardHotnessCalculator, TierBasedPriorityQueue
+from utils.adaptive_throttle import AdaptiveThrottler
+from utils.integrated_circuit_breaker import circuit_breaker_manager
+from utils.logging_config import ErrorTracker
+from utils.metrics import PrometheusMetrics, RiskMetrics
 
-logger = logging.getLogger("market.scraper")
+logger = logging.getLogger("players")
 
 
 def _min_buy_now(auctions):
@@ -226,6 +230,10 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
 
     logger.info(f"Starting tier-based price scrape for {tier} tier", extra={"tier": tier, "platform": platform})
 
+    # Increment active tasks
+    PrometheusMetrics.increment_active_scrapers(tier)
+    task_start_time = time.time()
+
     async def _run():
         priority_queue = TierBasedPriorityQueue()
 
@@ -269,6 +277,17 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
         # Calculate next scan time for this tier
         next_scan = timezone.now() + TIER_SCAN_WINDOWS.get(tier, timedelta(hours=1))
 
+        # Initialize adaptive throttler
+        throttler = AdaptiveThrottler()
+
+        # Initialize circuit breaker
+        breaker = await circuit_breaker_manager.get_breaker(tier, sid)
+
+        # Check if circuit is open globally
+        if await breaker.is_open_globally():
+            logger.warning(f"Circuit breaker is open for tier {tier}, skipping scrape")
+            return
+
         async with FutClient(x_ut_sid=sid) as client:
             for player_id in player_ids:
                 try:
@@ -278,15 +297,29 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                     if not player or not player.resource_id:
                         continue
 
-                    # Add human-like delay before request
-                    await asyncio.sleep(human_delay(1.5, variance=0.2))
+                    # Get adaptive delay
+                    delay = await throttler.get_adjusted_delay(tier)
+                    await asyncio.sleep(delay)
 
                     # Collect auctions from multiple pages (max 5 pages)
                     all_auctions = []
 
                     for page in range(1, 6):  # Max 5 pages
+                        # Check circuit breaker before each request
+                        if await breaker.is_open_globally():
+                            logger.warning("Circuit breaker opened during scraping, stopping")
+                            return
+
                         params = PlayerSearchParameters(page=page, resource_id=player.resource_id)
-                        res = await client.search_players(params)
+
+                        # Execute with circuit breaker
+                        request_start = time.time()
+                        try:
+                            res = await client.search_players(params)
+                            await breaker.record_success()
+                        except Exception as e:
+                            await breaker.record_failure(e)
+                            raise
 
                         if res.auctions:
                             all_auctions.extend(res.auctions)
@@ -361,6 +394,13 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                             )
 
                             success_count += 1
+
+                            # Record success metrics
+                            request_time = time.time() - task_start_time
+                            PrometheusMetrics.record_request(
+                                tier=tier, response_time=request_time, success=True, session_id=sid
+                            )
+
                             logger.debug(
                                 "Price scraped with pagination",
                                 extra={
@@ -374,13 +414,23 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                     else:
                         failure_count += 1
 
-                except RateLimitError:
+                except RateLimitError as e:
                     logger.warning(f"Rate limit hit while scraping {tier} tier", extra={"tier": tier})
+                    # Record rate limit hit
+                    RiskMetrics.record_rate_limit(session_id=sid)
+
                     # Back off for this tier
                     await asyncio.sleep(human_delay(10, variance=0.3))
 
                 except Exception as e:
                     failure_count += 1
+
+                    # Record error metrics
+                    RiskMetrics.record_error(tier=tier, error_type=ErrorTracker.categorize_error(e), session_id=sid)
+                    await ErrorTracker.log_error(
+                        ErrorTracker.categorize_error(e), e, {"tier": tier, "player_id": player_id}
+                    )
+
                     logger.error(
                         f"Error scraping player in {tier} tier",
                         extra={"tier": tier, "player_id": player_id, "error": str(e)},
@@ -397,7 +447,11 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
             },
         )
 
-    asyncio.run(_run())
+    try:
+        asyncio.run(_run())
+    finally:
+        # Decrement active tasks
+        PrometheusMetrics.decrement_active_scrapers(tier)
 
 
 @shared_task(bind=True, name="players.tasks.verify_pending_trades")

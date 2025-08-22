@@ -1,0 +1,196 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "fut25-scraper",
+    "title": "EA FC 25 Scraper Monitoring",
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "panels": [
+      {
+        "id": 1,
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "title": "Request Rate by Tier",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(scraper_requests_total[5m])",
+            "legendFormat": "{{tier}} - {{status}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "logBase": 1, "show": true},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "xaxis": {"show": true}
+      },
+      {
+        "id": 2,
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "title": "Response Time P95",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(scraper_response_time_seconds_bucket[5m]))",
+            "legendFormat": "{{tier}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "logBase": 1, "show": true},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "xaxis": {"show": true}
+      },
+      {
+        "id": 3,
+        "gridPos": {"x": 0, "y": 8, "w": 6, "h": 4},
+        "title": "Active Scrapers",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "sum(scraper_active_tasks)",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        }
+      },
+      {
+        "id": 4,
+        "gridPos": {"x": 6, "y": 8, "w": 6, "h": 4},
+        "title": "Rate Limit Hits (1h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "increase(scraper_rate_limits_total[1h])",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "orientation": "auto",
+          "textMode": "auto",
+          "colorMode": "value",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        }
+      },
+      {
+        "id": 5,
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(scraper_errors_total[5m])",
+            "legendFormat": "{{tier}} - {{error_type}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "logBase": 1, "show": true},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "xaxis": {"show": true}
+      },
+      {
+        "id": 6,
+        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+        "title": "Price Freshness (minutes)",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "scraper_price_freshness_minutes",
+            "legendFormat": "{{tier}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "showThresholdLabels": false,
+          "showThresholdMarkers": true
+        },
+        "fieldConfig": {
+          "defaults": {
+            "max": 180,
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"color": "green", "value": null},
+                {"color": "yellow", "value": 60},
+                {"color": "red", "value": 120}
+              ]
+            },
+            "unit": "m"
+          }
+        }
+      },
+      {
+        "id": 7,
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "title": "Queue Depth",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "scraper_queue_depth",
+            "legendFormat": "{{queue_name}}",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "logBase": 1, "show": true},
+          {"format": "short", "logBase": 1, "show": true}
+        ],
+        "xaxis": {"show": true}
+      },
+      {
+        "id": 8,
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "title": "Circuit Breaker Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "scraper_circuit_breaker_status",
+            "legendFormat": "{{tier}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "none",
+          "orientation": "auto",
+          "textMode": "name",
+          "colorMode": "background",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {"options": {"0": {"text": "Closed", "color": "green"}}, "type": "value"},
+              {"options": {"1": {"text": "Open", "color": "red"}}, "type": "value"}
+            ]
+          }
+        }
+      }
+    ],
+    "refresh": "10s",
+    "time": {
+      "from": "now-6h",
+      "to": "now"
+    }
+  }
+}

@@ -10,7 +10,8 @@
    - For chained operations: `await sync_to_async(lambda: Model.objects.filter(...).first())()`
 6. Update `features.md` after implementing any new feature, fix, or significant change. Keep it current with all implemented functionality. Always keep it lean tho - no fluff or bs!
 7. Update `plan.md` when any changes or fixes affect the planned architecture or implementation strategy. This ensures future phases follow the updated approach. Always keep it lean tho - no fluff or bs!
-8. Keep functions in their proper domains:
+8. Make sure imports are always present at top of the file, not inside functions. Unless absolutely necessary (e.g., to avoid circular imports).
+9. Keep functions in their proper domains:
    - Auth services: Authentication, login, session management
    - Market services: Trading, auctions, trade status, market operations  
    - Player services: Player data, pricing, tiers, hotness calculations

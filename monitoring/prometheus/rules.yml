@@ -1,0 +1,57 @@
+groups:
+  - name: scraper_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: rate(scraper_errors_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors/sec for tier {{ $labels.tier }}"
+      
+      - alert: RateLimitExceeded
+        expr: increase(scraper_rate_limits_total[1h]) > 10
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Rate limit threshold exceeded"
+          description: "Session {{ $labels.session_id }} hit rate limits {{ $value }} times"
+      
+      - alert: LowSuccessRate
+        expr: rate(scraper_requests_total{status="success"}[5m]) / rate(scraper_requests_total[5m]) < 0.8
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Success rate below 80%"
+          description: "Success rate is {{ $value }} for tier {{ $labels.tier }}"
+      
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.99, rate(scraper_response_time_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "P99 response time is {{ $value }}s for tier {{ $labels.tier }}"
+      
+      - alert: CircuitBreakerOpen
+        expr: scraper_circuit_breaker_status == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Circuit breaker is open"
+          description: "Circuit breaker for tier {{ $labels.tier }} is open"
+      
+      - alert: StalePrices
+        expr: scraper_price_freshness_minutes > 120
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Stale prices detected"
+          description: "Prices for tier {{ $labels.tier }} are {{ $value }} minutes old"

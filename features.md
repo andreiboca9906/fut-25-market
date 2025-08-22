@@ -291,6 +291,77 @@ Calculates player "hotness" scores based on four weighted factors:
 - Cleanup runs every 6 hours
 - Fully automated workflow
 
+## Phase 5: Monitoring & Observability ✅
+*Completed*
+
+### Prometheus Metrics Collection
+- **Performance Metrics**: Request counts, response times, active tasks
+- **Risk Metrics**: Rate limits, session expirations, errors, circuit breakers
+- **Data Quality Metrics**: Price freshness, verified trades ratio, stale prices
+- **System Health Metrics**: Active sessions, queue depth, worker utilization
+- **Custom Registry**: Dedicated Prometheus metrics registry for scraper
+
+### Grafana Dashboards
+- **Real-time Monitoring**: Request rates, response time P95, error rates
+- **Risk Indicators**: Rate limit hits, circuit breaker status
+- **Data Quality**: Price freshness gauges, verification ratios
+- **System Health**: Queue depths, active scrapers, worker status
+- **Auto-provisioning**: Pre-configured dashboards and datasources
+
+### Adaptive Throttling
+- **Dynamic Delay Adjustment**: Based on risk score and performance metrics
+  - High risk (>70): 1.5x delays
+  - Medium risk (>50): 1.2x delays  
+  - Low risk (<20): 0.95x delays
+- **Adaptive Batch Sizes**: Reduces batches under throttling
+- **Cooldown Manager**: Dynamic cooldowns based on session health
+- **Redis-based History**: Tracks adjustment factors over time
+
+### Structured Logging
+- **JSON Formatting**: Python JSON logger for structured logs
+- **Rotating Files**: Separate logs for general and errors
+- **Error Categorization**: Automatic error type classification
+- **Context Tracking**: Session IDs, tiers, player IDs in logs
+
+### Enhanced Celery Tasks
+- **Monitored Task Base**: Automatic metrics recording
+- **Request Timing**: Records duration of each scrape
+- **Error Tracking**: Categorizes and records all errors
+- **Active Task Counting**: Tracks concurrent tasks per tier
+- **Metrics Integration**: All tasks report to Prometheus
+
+### Docker Compose Setup
+- **Prometheus**: Time-series metrics storage (port 9090)
+- **Grafana**: Visualization and alerting (port 8040)
+- **Network Integration**: Shares fut25_network with main app
+- **Data Persistence**: Volumes for metrics and dashboards
+
+### Alert Rules
+- **High Error Rate**: >10% errors for 5 minutes
+- **Rate Limit Exceeded**: >10 hits per session per hour
+- **Low Success Rate**: <80% success for 10 minutes
+- **High Response Time**: P99 >5 seconds
+- **Circuit Breaker Open**: Immediate alert
+- **Stale Prices**: >2 hours old
+
+### Monitoring Features
+- **Metrics Endpoint**: `/metrics/` for Prometheus scraping
+- **Periodic Metrics Update**: Every minute via Celery beat
+- **Environment Configuration**: Adaptive throttle settings
+- **Start Script**: `start_monitoring.sh` for easy deployment
+
+### Integrated Circuit Breaker
+- **Metrics-Based Decisions**: Uses real-time Prometheus metrics instead of local counters
+- **Global Coordination**: All instances share circuit state via Redis
+- **Configurable Thresholds**: 
+  - Error rate > 50% opens circuit
+  - Rate limit hits > 10/hour opens circuit
+  - Success rate < 70% opens circuit
+  - Response time > 5s opens circuit
+- **CIRCUIT_BREAKER_ENABLED**: Environment flag to enable/disable feature
+- **Manual Controls**: Force open/close circuits via manager
+- **Health Reporting**: Circuit status visible in monitoring dashboards
+
 ---
 
-*Last Updated: Phase 4 Completion*
+*Last Updated: Phase 5 Completion with Integrated Circuit Breaker*

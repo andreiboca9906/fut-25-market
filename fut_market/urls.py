@@ -19,8 +19,10 @@ from django.contrib import admin
 from django.urls import path
 
 from fut_market.api import api
+from utils.metrics import metrics_view
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", api.urls),
+    path("metrics/", metrics_view, name="prometheus_metrics"),
 ]

@@ -188,8 +188,11 @@ LOGGING = {
     },
 }
 
+# Redis settings
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+
 # Celery settings
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://redis:6379/0")
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
 CELERY_TASK_ALWAYS_EAGER = False
 CELERY_TASK_TIME_LIMIT = 60
@@ -280,4 +283,19 @@ CELERY_BEAT_SCHEDULE = {
         "task": "players.tasks.cleanup_expired_trades",
         "schedule": crontab(minute="0", hour="*/6"),
     },
+    "update-metrics": {
+        "task": "players.monitored_tasks.update_metrics",
+        "schedule": 60.0,  # Every minute
+    },
 }
+
+# Circuit Breaker Configuration
+CIRCUIT_BREAKER_ENABLED = os.getenv("CIRCUIT_BREAKER_ENABLED", "false").lower() == "true"
+CIRCUIT_BREAKER_ERROR_THRESHOLD = float(os.getenv("CIRCUIT_BREAKER_ERROR_THRESHOLD", "0.5"))
+CIRCUIT_BREAKER_RATE_LIMIT_THRESHOLD = int(os.getenv("CIRCUIT_BREAKER_RATE_LIMIT_THRESHOLD", "10"))
+CIRCUIT_BREAKER_SUCCESS_THRESHOLD = float(os.getenv("CIRCUIT_BREAKER_SUCCESS_THRESHOLD", "0.7"))
+CIRCUIT_BREAKER_RESPONSE_TIME_THRESHOLD = float(os.getenv("CIRCUIT_BREAKER_RESPONSE_TIME_THRESHOLD", "5.0"))
+CIRCUIT_BREAKER_FAILURE_THRESHOLD = int(os.getenv("CIRCUIT_BREAKER_FAILURE_THRESHOLD", "3"))
+CIRCUIT_BREAKER_TIMEOUT_THRESHOLD = int(os.getenv("CIRCUIT_BREAKER_TIMEOUT_THRESHOLD", "5"))
+CIRCUIT_BREAKER_RECOVERY_TIMEOUT = int(os.getenv("CIRCUIT_BREAKER_RECOVERY_TIMEOUT", "300"))
+CIRCUIT_BREAKER_HALF_OPEN_CALLS = int(os.getenv("CIRCUIT_BREAKER_HALF_OPEN_CALLS", "3"))

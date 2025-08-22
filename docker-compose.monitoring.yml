@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   prometheus:
     image: prom/prometheus:latest
@@ -45,4 +43,5 @@ volumes:
 
 networks:
   fut25_network:
+    name: fut-25-market_fut25_network
     external: true

@@ -17,6 +17,8 @@ services:
       retries: 5
     volumes:
       - eafc25-local-pg-volume:/var/lib/postgresql-local/data
+    networks:
+      - fut25_network
 
   postgres-mcp:
     image: crystaldba/postgres-mcp:latest
@@ -29,17 +31,21 @@ services:
       - DATABASE_URI=postgresql://postgres:postgres@localhost:5432/eafc25
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - fut25_network
 
   redis:
     image: redis:7
     container_name: redis-eafc25
     ports:
       - "6379:6379"
+    networks:
+      - fut25_network
 
   celery-worker:
     build: .
     container_name: celery-worker-eafc25
-    command: celery -A fut_market worker -l info -Q prices
+    command: uv run celery -A fut_market worker -l info -Q prices
     depends_on:
       - redis
       - postgres-local
@@ -51,11 +57,13 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
+    networks:
+      - fut25_network
 
   celery-beat:
     build: .
     container_name: celery-beat-eafc25
-    command: celery -A fut_market beat -l info
+    command: uv run celery -A fut_market beat -l info
     depends_on:
       - redis
       - postgres-local
@@ -67,6 +75,12 @@ services:
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
+    networks:
+      - fut25_network
 
 volumes:
   eafc25-local-pg-volume:
+
+networks:
+  fut25_network:
+    driver: bridge

@@ -151,6 +151,14 @@ ASGI_APPLICATION = "fut_market.asgi.application"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "add_default_fields": {
+            "()": "django.utils.log.CallbackFilter",
+            "callback": lambda record: setattr(record, "job_id", getattr(record, "job_id", "-"))
+            or setattr(record, "resource_id", getattr(record, "resource_id", "-"))
+            or setattr(record, "error", getattr(record, "error", "-")),
+        },
+    },
     "formatters": {
         "verbose": {
             "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message} | job_id={job_id} resource_id={resource_id} error={error}",
@@ -169,10 +177,12 @@ LOGGING = {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "verbose",
+            "filters": ["add_default_fields"],
         },
         "market_scraper_console": {
             "class": "logging.StreamHandler",
             "formatter": "market_scraper",
+            "filters": ["add_default_fields"],
         },
     },
     "root": {
@@ -195,15 +205,27 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
 CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://redis:6379/1")
 CELERY_TASK_ALWAYS_EAGER = False
-CELERY_TASK_TIME_LIMIT = 60
-CELERY_TASK_SOFT_TIME_LIMIT = 55
+CELERY_TASK_TIME_LIMIT = 600
+CELERY_TASK_SOFT_TIME_LIMIT = 590
 CELERY_WORKER_CONCURRENCY = int(os.getenv("CELERY_WORKER_CONCURRENCY", "2"))
-CELERY_TASK_ROUTES = {
-    "players.tasks.scrape_tier_prices": {"queue": "tier_{tier}"},
-    "players.tasks.verify_pending_trades": {"queue": "verification"},
-    "players.tasks.recalculate_player_tiers": {"queue": "maintenance"},
-    "players.tasks.cleanup_expired_trades": {"queue": "maintenance"},
-}
+
+
+class TierRouter:
+    """Custom router for tier-based task routing"""
+
+    def route_for_task(self, task, args=None, kwargs=None, **options):
+        """Route tasks based on their name and parameters"""
+        if task == "players.tasks.scrape_tier_prices":
+            tier = (kwargs or {}).get("tier", "").lower()
+            return {"queue": f"tier_{tier}"}
+        elif task == "players.tasks.verify_pending_trades":
+            return {"queue": "verification"}
+        elif task in ["players.tasks.recalculate_player_tiers", "players.tasks.cleanup_expired_trades"]:
+            return {"queue": "maintenance"}
+        return None
+
+
+CELERY_TASK_ROUTES = [TierRouter()]
 
 CELERY_TASK_QUEUES = {
     "tier_hot": {
@@ -245,30 +267,32 @@ CELERY_TASK_QUEUES = {
 
 from celery.schedules import crontab
 
+from core.constants import TIER_SCAN_WINDOWS
+
 CELERY_BEAT_SCHEDULE = {
     "scrape-hot-players": {
         "task": "players.tasks.scrape_tier_prices",
-        "schedule": crontab(minute="*/5"),
+        "schedule": TIER_SCAN_WINDOWS["HOT"].total_seconds(),
         "kwargs": {"tier": "HOT"},
     },
     "scrape-trending-players": {
         "task": "players.tasks.scrape_tier_prices",
-        "schedule": crontab(minute="*/10"),
+        "schedule": TIER_SCAN_WINDOWS["TRENDING"].total_seconds(),
         "kwargs": {"tier": "TRENDING"},
     },
     "scrape-active-players": {
         "task": "players.tasks.scrape_tier_prices",
-        "schedule": crontab(minute="*/20"),
+        "schedule": TIER_SCAN_WINDOWS["ACTIVE"].total_seconds(),
         "kwargs": {"tier": "ACTIVE"},
     },
     "scrape-normal-players": {
         "task": "players.tasks.scrape_tier_prices",
-        "schedule": crontab(minute="*/45"),
+        "schedule": TIER_SCAN_WINDOWS["NORMAL"].total_seconds(),
         "kwargs": {"tier": "NORMAL"},
     },
     "scrape-cold-players": {
         "task": "players.tasks.scrape_tier_prices",
-        "schedule": crontab(minute="0", hour="*/2"),
+        "schedule": TIER_SCAN_WINDOWS["COLD"].total_seconds(),
         "kwargs": {"tier": "COLD"},
     },
     "verify-trades": {
@@ -284,7 +308,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="0", hour="*/6"),
     },
     "update-metrics": {
-        "task": "players.monitored_tasks.update_metrics",
+        "task": "players.metrics_tasks.update_metrics",
         "schedule": 60.0,  # Every minute
     },
 }

@@ -1,12 +1,11 @@
 {
-  "dashboard": {
-    "id": null,
-    "uid": "fut25-scraper",
-    "title": "EA FC 25 Scraper Monitoring",
-    "timezone": "browser",
-    "schemaVersion": 38,
-    "version": 1,
-    "panels": [
+  "id": null,
+  "uid": "fut25-scraper",
+  "title": "EA FC 25 Scraper Monitoring",
+  "timezone": "browser",
+  "schemaVersion": 38,
+  "version": 1,
+  "panels": [
       {
         "id": 1,
         "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
@@ -187,10 +186,9 @@
         }
       }
     ],
-    "refresh": "10s",
-    "time": {
-      "from": "now-6h",
-      "to": "now"
-    }
+  "refresh": "10s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
   }
 }

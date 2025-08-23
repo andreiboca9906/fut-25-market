@@ -74,7 +74,7 @@ class MetricsBasedCircuitBreaker(EACircuitBreaker):
 
     async def record_success(self):
         """Record successful request and check if circuit should close"""
-        await super().record_success()
+        self._on_success()
 
         # Report to monitoring
         PrometheusMetrics.record_request(
@@ -92,7 +92,7 @@ class MetricsBasedCircuitBreaker(EACircuitBreaker):
 
     async def record_failure(self, exception: Exception):
         """Record failure and check if circuit should open"""
-        await super().record_failure(exception)
+        self._on_failure(exception)
 
         # Report to monitoring
         error_type = ErrorTracker.categorize_error(exception)

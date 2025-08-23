@@ -277,6 +277,8 @@ Calculates player "hotness" scores based on four weighted factors:
 - **Batch Processing**: Verifies up to 60 trades per run (20 per API call)
 - **Simple Price Tracking**: Current price = last verified sold price
 - **Verified Price History**: Records all sold trades with `is_verified=True`
+- **Enhanced Logging**: Detailed [TRADE_VERIFY] logs for debugging and monitoring
+- **Error Handling**: Graceful handling of session errors and database save failures
 
 ### API Efficiency Improvements
 - **Paginated Search**: Collects more market data per player

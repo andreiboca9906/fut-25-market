@@ -209,5 +209,6 @@ TIER_SCAN_WINDOWS = {
     "TRENDING": timedelta(minutes=10),
     "ACTIVE": timedelta(minutes=20),
     "NORMAL": timedelta(minutes=45),
-    "COLD": timedelta(hours=2),
+    # "COLD": timedelta(hours=2),  # Change this back
+    "COLD": timedelta(minutes=5),
 }

@@ -164,24 +164,59 @@ The session ID can be obtained through the login process or external authenticat
 # Start Redis
 docker-compose up -d redis
 
-# Run worker (runs for all players, use below ones instead for testing)
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q prices
+# Run all workers (separate terminals for each)
+# Tier-based price scraping workers
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_hot -n worker.hot
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_trending -n worker.trending
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_active -n worker.active
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_normal -n worker.normal
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_cold -n worker.cold
+
+# Verification and maintenance workers
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q verification -n worker.verification
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q maintenance -n worker.maintenance
+
+# Or run a single worker for all queues (simpler for testing)
+./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_hot,tier_trending,tier_active,tier_normal,tier_cold,verification,maintenance
 
 # Run scheduler (separate terminal)
 ./scripts/load-env.sh uv run celery -A fut_market beat -l info
 
-# Test with 10 players only
-./scripts/load-env.sh env TEST_MODE=true uv run celery -A fut_market worker -l info -Q prices
+# Test with limited players (TEST_MODE)
+./scripts/load-env.sh env TEST_MODE=true uv run celery -A fut_market worker -l info -Q tier_hot,tier_trending,tier_active,tier_normal,tier_cold,verification.maintenance
 ```
+
+### Queue Schedule
+- **tier_hot**: Every 5 minutes (hot players with high market activity)
+- **tier_trending**: Every 10 minutes (trending players)
+- **tier_active**: Every 20 minutes (active market players)
+- **tier_normal**: Every 45 minutes (normal players)
+- **tier_cold**: Every 2 hours (cold/inactive players)
+- **verification**: Every 5 minutes (verify pending trades)
+- **maintenance**: Hourly tier recalculation, 6-hourly cleanup
 
 ### Production Deployment
 ```bash
-# Start all services
+# Start all services with Docker Compose
 docker-compose up -d
 
 # Or manually on VM:
 redis-server &
-celery -A fut_market worker -l info -Q prices --detach
+
+# Start all queue workers
+celery -A fut_market worker -l info -Q tier_hot -n worker.hot@%h --detach
+celery -A fut_market worker -l info -Q tier_trending -n worker.trending@%h --detach
+celery -A fut_market worker -l info -Q tier_active -n worker.active@%h --detach
+celery -A fut_market worker -l info -Q tier_normal -n worker.normal@%h --detach
+celery -A fut_market worker -l info -Q tier_cold -n worker.cold@%h --detach
+celery -A fut_market worker -l info -Q verification -n worker.verification@%h --detach
+celery -A fut_market worker -l info -Q maintenance -n worker.maintenance@%h --detach
+
+# Start beat scheduler
+celery -A fut_market beat -l info --detach
+
+# Or use a single worker for all queues (simpler but less scalable)
+celery -A fut_market worker -l info -Q tier_hot,tier_trending,tier_active,tier_normal,tier_cold,verification,maintenance --detach
 celery -A fut_market beat -l info --detach
 ```
 

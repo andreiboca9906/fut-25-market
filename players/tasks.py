@@ -209,7 +209,7 @@ def scrape_market_prices(self, platform: str = "ps"):
         job.notes = str(e)
         job.ended_at = timezone.now()
         job.save()
-        logger.error("Price scrape job failed", extra={"job_id": job.id, "error": str(e)})
+        logger.error("Price scrape job failed", extra={"job_id": job.id, "error": str(e)}, exc_info=True)
         raise
 
 
@@ -255,20 +255,23 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
         )
 
         # Get active session
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT session_id
-                FROM ea_accounts
-                WHERE session_id IS NOT NULL AND is_expired = FALSE
-                ORDER BY RANDOM()
-                LIMIT 1
-            """)
-            row = cursor.fetchone()
+        def get_active_session():
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT session_id
+                    FROM ea_accounts
+                    WHERE session_id IS NOT NULL AND is_expired = FALSE
+                    ORDER BY RANDOM()
+                    LIMIT 1
+                """)
+                row = cursor.fetchone()
 
-        if not row:
-            raise SessionExpiredError("No active session available")
+            if not row:
+                raise SessionExpiredError("No active session available")
 
-        sid = row[0]
+            return row[0]
+
+        sid = await sync_to_async(get_active_session)()
 
         success_count = 0
         failure_count = 0
@@ -434,6 +437,7 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                     logger.error(
                         f"Error scraping player in {tier} tier",
                         extra={"tier": tier, "player_id": player_id, "error": str(e)},
+                        exc_info=True,  # This will log the full traceback
                     )
 
         logger.info(
@@ -458,11 +462,12 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
 def verify_pending_trades(self, batch_size: int = 60):
     """Verify pending trades that have expired to confirm actual sale prices."""
 
-    logger.info("Starting trade verification task")
+    logger.info(f"[TRADE_VERIFY] Starting trade verification task with batch_size={batch_size}")
 
     async def _run():
         # Get trades where expires_at < now() (auctions that have ended)
         current_time = timezone.now()
+        logger.info(f"[TRADE_VERIFY] Checking for trades expired before {current_time}")
 
         pending_trades = await sync_to_async(
             lambda: list(
@@ -473,26 +478,36 @@ def verify_pending_trades(self, batch_size: int = 60):
         )()
 
         if not pending_trades:
-            logger.info("No expired trades to verify")
+            logger.info("[TRADE_VERIFY] No expired trades to verify")
             return
 
-        logger.info(f"Verifying {len(pending_trades)} expired trades")
+        logger.info(f"[TRADE_VERIFY] Found {len(pending_trades)} expired trades to verify")
 
         # Get active session
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT session_id
-                FROM ea_accounts
-                WHERE session_id IS NOT NULL AND is_expired = FALSE
-                ORDER BY RANDOM()
-                LIMIT 1
-            """)
-            row = cursor.fetchone()
+        def get_active_session():
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT session_id
+                    FROM ea_accounts
+                    WHERE session_id IS NOT NULL AND is_expired = FALSE
+                    ORDER BY RANDOM()
+                    LIMIT 1
+                """)
+                row = cursor.fetchone()
 
-        if not row:
-            raise SessionExpiredError("No active session available")
+            if not row:
+                raise SessionExpiredError("No active session available")
 
-        sid = row[0]
+            return row[0]
+
+        try:
+            sid = await sync_to_async(get_active_session)()
+        except SessionExpiredError as e:
+            logger.error(f"[TRADE_VERIFY] No active session available: {str(e)}")
+            return
+        except Exception as e:
+            logger.error(f"[TRADE_VERIFY] Failed to get active session: {str(e)}")
+            return
 
         async with FutClient(x_ut_sid=sid) as client:
             # Create market service
@@ -527,19 +542,29 @@ def verify_pending_trades(self, batch_size: int = 60):
                                 sold_count += 1
 
                                 # Update current_price with verified sold price
-                                await sync_to_async(PlayerPrice.objects.filter(player_id=trade.player_id).update)(
-                                    current_price=trade.listed_price, last_updated=timezone.now()
-                                )
+                                try:
+                                    await sync_to_async(PlayerPrice.objects.filter(player_id=trade.player_id).update)(
+                                        current_price=trade.listed_price, last_updated=timezone.now()
+                                    )
+                                except Exception as price_error:
+                                    logger.error(
+                                        f"[TRADE_VERIFY] Failed to update price for player {trade.player_id}: {str(price_error)}"
+                                    )
 
                                 # Record verified sale in history
-                                await sync_to_async(PlayerPriceHistory.objects.create)(
-                                    player=trade.player,
-                                    platform="ps",
-                                    price=trade.listed_price,
-                                    trade_id=trade.trade_id,
-                                    is_verified=True,
-                                    fetched_at=timezone.now(),
-                                )
+                                try:
+                                    await sync_to_async(PlayerPriceHistory.objects.create)(
+                                        player=trade.player,
+                                        platform="ps",
+                                        price=trade.listed_price,
+                                        trade_id=trade.trade_id,
+                                        is_verified=True,
+                                        fetched_at=timezone.now(),
+                                    )
+                                except Exception as history_error:
+                                    logger.error(
+                                        f"[TRADE_VERIFY] Failed to create price history for trade {trade.trade_id}: {str(history_error)}"
+                                    )
 
                                 verified_count += 1
 
@@ -566,11 +591,15 @@ def verify_pending_trades(self, batch_size: int = 60):
                             trade.status = TradeWatch.EXPIRED
                             expired_count += 1
 
+                        # Update checked_at and save
                         trade.checked_at = timezone.now()
-                        await sync_to_async(trade.save)()
+                        try:
+                            await sync_to_async(trade.save)()
+                        except Exception as save_error:
+                            logger.error(f"[TRADE_VERIFY] Failed to save trade {trade.trade_id}: {str(save_error)}")
 
                     logger.info(
-                        "Batch verification completed",
+                        f"[TRADE_VERIFY] Batch verification completed - sold: {sold_count}, expired: {expired_count}, active: {active_count}, verified: {verified_count}",
                         extra={
                             "batch_size": len(batch),
                             "verified_count": verified_count,
@@ -581,13 +610,22 @@ def verify_pending_trades(self, batch_size: int = 60):
                     )
 
                 except Exception as e:
-                    logger.error("Error verifying trades batch", extra={"error": str(e), "trade_count": len(trade_ids)})
+                    logger.error(
+                        f"[TRADE_VERIFY] Error verifying trades batch: {str(e)}",
+                        extra={"error": str(e), "trade_count": len(trade_ids)},
+                        exc_info=True,
+                    )
                     # Mark batch as checked but keep pending status
                     for trade in batch:
                         trade.checked_at = timezone.now()
                         await sync_to_async(trade.save)()
 
-    asyncio.run(_run())
+    try:
+        asyncio.run(_run())
+        logger.info("[TRADE_VERIFY] Trade verification task completed successfully")
+    except Exception as e:
+        logger.error(f"[TRADE_VERIFY] Task failed with error: {str(e)}", exc_info=True)
+        raise
 
 
 @shared_task(bind=True, name="players.tasks.recalculate_player_tiers")

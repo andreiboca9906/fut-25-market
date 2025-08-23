@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import time
 
@@ -54,9 +55,13 @@ def chunk(lst, n):
 
 
 @shared_task
-async def update_metrics():
+def update_metrics():
     """Update all Prometheus metrics periodically"""
-    await QualityMetrics.update_freshness_metrics()
-    await QualityMetrics.update_verification_metrics()
-    await SystemMetrics.update_celery_metrics()
-    await SystemMetrics.update_session_metrics()
+
+    async def _run():
+        await QualityMetrics.update_freshness_metrics()
+        await QualityMetrics.update_verification_metrics()
+        await SystemMetrics.update_celery_metrics()
+        await SystemMetrics.update_session_metrics()
+
+    asyncio.run(_run())

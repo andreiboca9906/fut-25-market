@@ -29,6 +29,7 @@ from utils.adaptive_throttle import AdaptiveThrottler
 from utils.integrated_circuit_breaker import circuit_breaker_manager
 from utils.logging_config import ErrorTracker
 from utils.metrics import PrometheusMetrics, RiskMetrics
+from utils.task_deduplication import DeduplicatedTask
 
 logger = logging.getLogger("players")
 
@@ -38,7 +39,7 @@ def _min_buy_now(auctions):
     return min((a.buy_now_price for a in auctions if a.buy_now_price), default=None)
 
 
-@shared_task(bind=True)
+@shared_task(bind=True, base=DeduplicatedTask)
 def scrape_market_prices(self, platform: str = "ps"):
     """Scrape market prices for all players with resource_id."""
 
@@ -224,7 +225,7 @@ def human_sleep(base_seconds: float):
     time.sleep(human_delay(base_seconds))
 
 
-@shared_task(bind=True, name="players.tasks.scrape_tier_prices")
+@shared_task(bind=True, name="players.tasks.scrape_tier_prices", base=DeduplicatedTask)
 def scrape_tier_prices(self, tier: str, platform: str = "ps"):
     """Scrape market prices for players in a specific tier with pagination."""
 
@@ -458,7 +459,7 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
         PrometheusMetrics.decrement_active_scrapers(tier)
 
 
-@shared_task(bind=True, name="players.tasks.verify_pending_trades")
+@shared_task(bind=True, name="players.tasks.verify_pending_trades", base=DeduplicatedTask)
 def verify_pending_trades(self, batch_size: int = 60):
     """Verify pending trades that have expired to confirm actual sale prices."""
 
@@ -628,7 +629,7 @@ def verify_pending_trades(self, batch_size: int = 60):
         raise
 
 
-@shared_task(bind=True, name="players.tasks.recalculate_player_tiers")
+@shared_task(bind=True, name="players.tasks.recalculate_player_tiers", base=DeduplicatedTask)
 def recalculate_player_tiers(self):
     """Recalculate hotness scores and tiers for all players."""
 
@@ -643,7 +644,7 @@ def recalculate_player_tiers(self):
     logger.info("Player tier recalculation completed")
 
 
-@shared_task(bind=True, name="players.tasks.cleanup_expired_trades")
+@shared_task(bind=True, name="players.tasks.cleanup_expired_trades", base=DeduplicatedTask)
 def cleanup_expired_trades(self):
     """Clean up old expired trade watches."""
 

@@ -6,11 +6,12 @@ import logging
 from celery import shared_task
 
 from utils.metrics import QualityMetrics, SystemMetrics
+from utils.task_deduplication import DeduplicatedTask
 
 logger = logging.getLogger("players")
 
 
-@shared_task
+@shared_task(base=DeduplicatedTask)
 def update_metrics():
     """Update all Prometheus metrics periodically"""
     logger.info("Running metrics update task")

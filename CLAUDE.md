@@ -11,11 +11,13 @@
    - Same for celery tasks
 6. Update `features.md` after implementing any new feature, fix, or significant change. Keep it current with all implemented functionality. Always keep it lean tho - no fluff or bs!
 7. Update `plan.md` when any changes or fixes affect the planned architecture or implementation strategy. This ensures future phases follow the updated approach. Always keep it lean tho - no fluff or bs!
-8. Make sure imports are always present at top of the file, not inside functions. Unless absolutely necessary (e.g., to avoid circular imports).
+8. ALL imports go at the top of the file. Period. Only exception: proven circular imports (which you must verify first, not assume). Standard library imports (datetime, os,
+  json, etc.) NEVER have circular import issues - put them at the top. Being "safe" with unnecessary local imports is not safe, it's sloppy
 9. Keep functions in their proper domains:
    - Auth services: Authentication, login, session management
    - Market services: Trading, auctions, trade status, market operations  
    - Player services: Player data, pricing, tiers, hotness calculations
+10. Do not add extra features or functions or class or utils if u not using it right now. Do not think of future or prod - if u not planning on implementing it fully.
 10. An external process controls session ids of the below table, that we use in this repo. So do not implement something similar in this repo
 Used for managing EA account sessions. This table is used by the session pool for load distribution:
 - `id`: Primary key, account ID

@@ -364,6 +364,37 @@ Calculates player "hotness" scores based on four weighted factors:
 - **Manual Controls**: Force open/close circuits via manager
 - **Health Reporting**: Circuit status visible in monitoring dashboards
 
+## Phase 6: Task Deduplication System ✅
+*Completed*
+
+### Celery Task Deduplication
+- **DeduplicatedTask Base Class**: Custom Celery task class for automatic deduplication
+- **Queue Deduplication**: Only keeps latest instance of each task type in queue
+- **Running Task Cancellation**: Automatically revokes running tasks when new instance is queued
+- **Tier-Aware Deduplication**: Different dedup keys for tier-based tasks (e.g., HOT vs TRENDING)
+- **Redis-Based Locks**: Uses cache for distributed lock management with 2-hour TTL
+
+### Deduplication Features
+- **Before Start Hook**: Checks if task should run or be skipped
+- **After Return Hook**: Cleans up locks after task completion
+- **Apply Async Override**: Manages queue deduplication on task submission
+- **Automatic Revocation**: Uses Celery control commands to cancel tasks
+- **Detailed Logging**: Tracks all deduplication decisions
+
+### Applied to All Tasks
+- `scrape_market_prices`: Full market scan deduplication
+- `scrape_tier_prices`: Per-tier deduplication (HOT, TRENDING, etc.)
+- `verify_pending_trades`: Single instance verification
+- `recalculate_player_tiers`: Prevents duplicate recalculations
+- `cleanup_expired_trades`: Single cleanup task
+- `update_metrics`: Prevents metric update overlap
+
+### Benefits
+- **Prevents Queue Buildup**: Keeps only latest task when backpressure occurs
+- **Stops Redundant Work**: Cancels old tasks still retrying on expired sessions
+- **Efficient Resource Usage**: No duplicate processing of same data
+- **Maintains Fresh Data**: Always runs latest task with most recent parameters
+
 ---
 
-*Last Updated: Phase 5 Completion with Integrated Circuit Breaker*
+*Last Updated: Phase 6 - Task Deduplication System*

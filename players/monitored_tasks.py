@@ -7,6 +7,7 @@ from celery import Task, shared_task
 from utils.integrated_circuit_breaker import circuit_breaker_manager
 from utils.logging_config import ErrorTracker
 from utils.metrics import PrometheusMetrics, QualityMetrics, RiskMetrics, SystemMetrics
+from utils.task_deduplication import DeduplicatedTask
 
 logger = logging.getLogger("players")
 
@@ -54,7 +55,7 @@ def chunk(lst, n):
         yield lst[i : i + n]
 
 
-@shared_task
+@shared_task(base=DeduplicatedTask)
 def update_metrics():
     """Update all Prometheus metrics periodically"""
 

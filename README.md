@@ -183,7 +183,7 @@ docker-compose up -d redis
 ./scripts/load-env.sh uv run celery -A fut_market beat -l info
 
 # Test with limited players (TEST_MODE)
-./scripts/load-env.sh env TEST_MODE=true uv run celery -A fut_market worker -l info -Q tier_hot,tier_trending,tier_active,tier_normal,tier_cold,verification.maintenance
+./scripts/load-env.sh env TEST_MODE=true uv run celery -A fut_market worker -l info -Q tier_hot,tier_trending,tier_active,tier_normal,tier_cold,verification,maintenance
 ```
 
 ### Queue Schedule

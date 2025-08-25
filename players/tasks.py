@@ -220,11 +220,6 @@ def human_delay(base_seconds: float, variance: float = 0.15) -> float:
     return base_seconds + random.uniform(-jitter, jitter)
 
 
-def human_sleep(base_seconds: float):
-    """Sleep with human-like variance."""
-    time.sleep(human_delay(base_seconds))
-
-
 @shared_task(bind=True, name="players.tasks.scrape_tier_prices", base=DeduplicatedTask)
 def scrape_tier_prices(self, tier: str, platform: str = "ps"):
     """Scrape market prices for players in a specific tier with pagination."""

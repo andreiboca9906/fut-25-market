@@ -128,7 +128,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "(fc25_session_pool_healthy / fc25_session_pool_size) * 100",
+          "expr": "avg(fc25_session_pool_healthy / fc25_session_pool_size) * 100",
           "refId": "A"
         }
       ],
@@ -273,7 +273,7 @@
       "type": "heatmap",
       "targets": [
         {
-          "expr": "fc25_price_freshness_minutes",
+          "expr": "sum by (tier) (fc25_price_freshness_minutes)",
           "format": "time_series",
           "refId": "A"
         }
@@ -342,7 +342,7 @@
       "type": "bargauge",
       "targets": [
         {
-          "expr": "fc25_stale_prices_count",
+          "expr": "sum by (tier) (fc25_stale_prices_count)",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -375,7 +375,7 @@
       "type": "piechart",
       "targets": [
         {
-          "expr": "fc25_tier_player_count",
+          "expr": "sum by (tier) (fc25_tier_player_count)",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -433,7 +433,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "fc25_missing_prices_count",
+          "expr": "sum(fc25_missing_prices_count)",
           "refId": "A"
         }
       ],
@@ -467,7 +467,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "fc25_verified_trades_ratio * 100",
+          "expr": "avg(fc25_verified_trades_ratio) * 100",
           "refId": "A"
         }
       ],

@@ -198,7 +198,7 @@ source ./scripts/load-env.sh && uv run celery -A fut_market beat -l info
 - **tier_active**: Every 20 minutes (active market players)
 - **tier_normal**: Every 45 minutes (normal players)
 - **tier_cold**: Every 2 hours (cold/inactive players)
-- **verification**: Every 5 minutes (verify pending trades)
+- **verification**: Every 5 seconds (verify pending trades)
 - **maintenance**: Hourly tier recalculation, 6-hourly cleanup
 
 ### Production Deployment

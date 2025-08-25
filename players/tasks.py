@@ -384,14 +384,8 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                                         if created:
                                             trades_collected += 1
 
-                            # Add to price history (unverified)
-                            await sync_to_async(PlayerPriceHistory.objects.create)(
-                                player=player,
-                                platform=platform,
-                                price=Decimal(min_price),
-                                fetched_at=timezone.now(),
-                                is_verified=False,
-                            )
+                            # Note: PlayerPriceHistory only records verified sold trades
+                            # Unverified scraping data is tracked via TradeWatch and current PlayerPrice
 
                             success_count += 1
 
@@ -559,7 +553,7 @@ def verify_pending_trades(self, batch_size: int = 60):
                                         f"[TRADE_VERIFY] Failed to update price for player {trade.player_id}: {str(price_error)}"
                                     )
 
-                                # Record verified sale in history
+                                # Record verified sale in history (only for confirmed sales)
                                 try:
                                     await sync_to_async(PlayerPriceHistory.objects.create)(
                                         player=trade.player,

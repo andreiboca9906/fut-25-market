@@ -87,7 +87,7 @@ Automatically categorizes players into 5 tiers based on market activity:
 - **Tier-based queues**: Separate priority queues per tier
 - **Scheduled tasks**:
   - Price scraping (per tier schedule)
-  - Trade verification (every 5 min)
+  - Trade verification (every 5 sec)
   - Tier recalculation (hourly)
   - Cleanup (every 6 hours)
   - Metrics update (every minute)

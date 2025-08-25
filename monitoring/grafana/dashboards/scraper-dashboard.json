@@ -13,19 +13,19 @@
   "panels": [
     {
       "id": 22,
-      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8},
-      "title": "Players Without Prices by Rating",
-      "type": "bargauge",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "title": "Players With Prices by Rating (Count)",
+      "type": "bargauge", 
       "targets": [
         {
-          "expr": "sum by (rating_range) (fc25_missing_prices_by_rating)",
+          "expr": "sum by (rating_range) (fc25_players_with_prices_by_rating)",
           "legendFormat": "{{rating_range}}",
           "refId": "A"
         }
       ],
       "options": {
         "displayMode": "gradient",
-        "orientation": "horizontal",
+        "orientation": "vertical",
         "reduceOptions": {
           "values": false,
           "calcs": ["lastNotNull"]
@@ -36,14 +36,76 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "green", "value": null},
-              {"color": "yellow", "value": 50},
-              {"color": "red", "value": 100}
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 1000},
+              {"color": "green", "value": 5000}
             ]
           },
           "unit": "short"
         }
-      }
+      },
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "rating_range",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "title": "Players With Prices Ratio by Rating (%)",
+      "type": "bargauge",
+      "targets": [
+        {
+          "expr": "sum by (rating_range) (fc25_players_with_prices_ratio) * 100",
+          "legendFormat": "{{rating_range}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "displayMode": "lcd",
+        "orientation": "vertical",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "green", "value": 80}
+            ]
+          },
+          "unit": "percent"
+        }
+      },
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "rating_range",
+                "desc": false
+              }
+            ]
+          }
+        }
+      ]
     },
     {
       "id": 1,

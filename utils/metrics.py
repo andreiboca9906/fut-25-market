@@ -53,8 +53,16 @@ trade_completion_pressure_gauge = Gauge("fc25_trade_completion_pressure", "Ratio
 
 missing_prices_gauge = Gauge("fc25_missing_prices_count", "Number of players without prices")
 
-missing_prices_by_rating_gauge = Gauge(
-    "fc25_missing_prices_by_rating", "Number of players without prices by rating range", ["rating_range"]
+players_with_prices_by_rating_gauge = Gauge(
+    "fc25_players_with_prices_by_rating", "Number of players with prices by rating range", ["rating_range"]
+)
+
+total_players_by_rating_gauge = Gauge(
+    "fc25_total_players_by_rating", "Total number of players by rating range", ["rating_range"]
+)
+
+players_with_prices_ratio_gauge = Gauge(
+    "fc25_players_with_prices_ratio", "Ratio of players with prices to total players by rating range", ["rating_range"]
 )
 
 stale_prices_gauge = Gauge("fc25_stale_prices_count", "Number of prices older than 2 hours", ["tier"])
@@ -192,8 +200,8 @@ class QualityMetrics:
             tier_player_count_gauge.labels(tier=tier).set(count)
 
     @staticmethod
-    async def update_missing_prices_by_rating():
-        """Update players without prices by rating ranges"""
+    async def update_players_with_prices_by_rating():
+        """Update players with prices by rating ranges (ordered from highest to lowest)"""
         rating_ranges = [
             ("90-100", 90, 100),
             ("80-89", 80, 89),
@@ -204,13 +212,25 @@ class QualityMetrics:
         ]
 
         for range_name, min_rating, max_rating in rating_ranges:
-            # Count players in this rating range that have NO PlayerPrice records
-            count = await sync_to_async(
+            # Count total players in this rating range
+            total_players = await sync_to_async(
+                lambda: Player.objects.filter(rating__gte=min_rating, rating__lte=max_rating).count()
+            )()
+
+            # Count players in this rating range that HAVE PlayerPrice records
+            players_with_prices = await sync_to_async(
                 lambda: Player.objects.filter(rating__gte=min_rating, rating__lte=max_rating)
-                .exclude(id__in=PlayerPrice.objects.values_list("player_id", flat=True))
+                .filter(id__in=PlayerPrice.objects.values_list("player_id", flat=True))
                 .count()
             )()
-            missing_prices_by_rating_gauge.labels(rating_range=range_name).set(count)
+
+            # Calculate ratio (avoid division by zero)
+            ratio = (players_with_prices / total_players) if total_players > 0 else 0.0
+
+            # Set the metrics
+            total_players_by_rating_gauge.labels(rating_range=range_name).set(total_players)
+            players_with_prices_by_rating_gauge.labels(rating_range=range_name).set(players_with_prices)
+            players_with_prices_ratio_gauge.labels(rating_range=range_name).set(ratio)
 
 
 class SystemMetrics:

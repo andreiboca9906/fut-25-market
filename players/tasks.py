@@ -328,9 +328,11 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                                     # Check if any trade IDs in this page are new
                                     existing_trade_ids = set(
                                         await sync_to_async(
-                                            lambda: list(TradeWatch.objects.filter(
-                                                trade_id__in=[str(a.trade_id) for a in res.auctions]
-                                            ).values_list("trade_id", flat=True))
+                                            lambda: list(
+                                                TradeWatch.objects.filter(
+                                                    trade_id__in=[str(a.trade_id) for a in res.auctions]
+                                                ).values_list("trade_id", flat=True)
+                                            )
                                         )()
                                     )
 

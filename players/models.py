@@ -4,6 +4,8 @@ from django.db import models, transaction
 from django.db.models import Avg, Case, Count, Max, Min, When
 from django.utils import timezone
 
+from utils.metrics import PrometheusMetrics
+
 
 class PlayerManager(models.Manager):
     """Custom manager for Player model."""
@@ -206,9 +208,16 @@ class PlayerPriceManager(models.Manager):
     @transaction.atomic
     def update_price(self, player_id: int, platform: str, price: float, currency: str = "COINS"):
         """Update or create price for a player."""
-        return self.update_or_create(
+        result = self.update_or_create(
             player_id=player_id, platform=platform, defaults={"current_price": price, "currency": currency}
         )
+
+        # Record the price update metric
+        player = result[0].player
+        if hasattr(player, "tier") and player.tier:
+            PrometheusMetrics.record_price_update(player.tier.tier)
+
+        return result
 
 
 class PlayerPrice(models.Model):

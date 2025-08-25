@@ -113,6 +113,11 @@ def scrape_market_prices(self, platform: str = "ps"):
                                             price=Decimal(price),
                                             fetched_at=now,
                                         )
+
+                                        # Record price update metric
+                                        if hasattr(player_obj, "tier") and player_obj.tier:
+                                            PrometheusMetrics.record_price_update(player_obj.tier.tier)
+
                                         job.success_count += 1
                                         logger.info(
                                             "Price updated",
@@ -362,6 +367,10 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                                 defaults={"current_price": Decimal(min_price), "last_updated": timezone.now()},
                             )
 
+                            # Record price update metric
+                            if hasattr(player, "tier") and player.tier:
+                                PrometheusMetrics.record_price_update(player.tier.tier)
+
                             # Track ALL auctions expiring before next scan
                             for auction in buyable_auctions:
                                 if auction.expires:
@@ -548,6 +557,11 @@ def verify_pending_trades(self, batch_size: int = 60):
                                     await sync_to_async(PlayerPrice.objects.filter(player_id=trade.player_id).update)(
                                         current_price=trade.listed_price, last_updated=timezone.now()
                                     )
+
+                                    # Record price update metric
+                                    if hasattr(trade.player, "tier") and trade.player.tier:
+                                        PrometheusMetrics.record_price_update(trade.player.tier.tier)
+
                                 except Exception as price_error:
                                     logger.error(
                                         f"[TRADE_VERIFY] Failed to update price for player {trade.player_id}: {str(price_error)}"

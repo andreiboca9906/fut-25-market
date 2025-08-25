@@ -3,7 +3,7 @@ groups:
     interval: 30s
     rules:
       - alert: HighErrorRate
-        expr: rate(scraper_errors_total[5m]) > 0.1
+        expr: rate(fc25_scraper_errors_total[5m]) > 0.1
         for: 5m
         labels:
           severity: warning
@@ -12,7 +12,7 @@ groups:
           description: "Error rate is {{ $value }} errors/sec for tier {{ $labels.tier }}"
       
       - alert: RateLimitExceeded
-        expr: increase(scraper_rate_limits_total[1h]) > 10
+        expr: increase(fc25_scraper_rate_limits_total[1h]) > 10
         for: 1m
         labels:
           severity: critical
@@ -21,7 +21,7 @@ groups:
           description: "Session {{ $labels.session_id }} hit rate limits {{ $value }} times"
       
       - alert: LowSuccessRate
-        expr: rate(scraper_requests_total{status="success"}[5m]) / rate(scraper_requests_total[5m]) < 0.8
+        expr: rate(fc25_scraper_requests_total{status="success"}[5m]) / rate(fc25_scraper_requests_total[5m]) < 0.8
         for: 10m
         labels:
           severity: critical
@@ -30,7 +30,7 @@ groups:
           description: "Success rate is {{ $value }} for tier {{ $labels.tier }}"
       
       - alert: HighResponseTime
-        expr: histogram_quantile(0.99, rate(scraper_response_time_seconds_bucket[5m])) > 5
+        expr: histogram_quantile(0.99, rate(fc25_scraper_response_time_seconds_bucket[5m])) > 5
         for: 5m
         labels:
           severity: warning
@@ -39,7 +39,7 @@ groups:
           description: "P99 response time is {{ $value }}s for tier {{ $labels.tier }}"
       
       - alert: CircuitBreakerOpen
-        expr: scraper_circuit_breaker_status == 1
+        expr: fc25_circuit_breaker_status == 1
         for: 1m
         labels:
           severity: critical
@@ -48,7 +48,7 @@ groups:
           description: "Circuit breaker for tier {{ $labels.tier }} is open"
       
       - alert: StalePrices
-        expr: scraper_price_freshness_minutes > 120
+        expr: fc25_price_freshness_minutes > 120
         for: 10m
         labels:
           severity: warning

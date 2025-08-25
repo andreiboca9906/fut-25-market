@@ -166,8 +166,7 @@ class QualityMetrics:
         """Update trade verification metrics"""
         stats = await sync_to_async(
             lambda: TradeWatch.objects.aggregate(
-                pending=Count("id", filter=Q(status="pending")), 
-                sold=Count("id", filter=Q(status="sold"))
+                pending=Count("id", filter=Q(status="pending")), sold=Count("id", filter=Q(status="sold"))
             )
         )()
 

@@ -4,7 +4,12 @@
   "title": "EA FC 25 Scraper Monitoring",
   "timezone": "browser",
   "schemaVersion": 38,
-  "version": 1,
+  "version": 2,
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "links": [],
+  "liveNow": false,
   "panels": [
     {
       "id": 1,
@@ -13,6 +18,10 @@
       "type": "graph",
       "targets": [
         {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
           "expr": "rate(fc25_scraper_requests_total[5m])",
           "legendFormat": "{{tier}} - {{status}}",
           "refId": "A"
@@ -54,7 +63,7 @@
       "type": "graph",
       "targets": [
         {
-          "expr": "rate(fc25_scraper_requests_total{status=\"success\"}[5m]) / (rate(fc25_scraper_requests_total{status=\"success\"}[5m]) + rate(fc25_scraper_requests_total{status=\"failure\"}[5m])) * 100",
+          "expr": "rate(fc25_scraper_requests_total{status=\"success\"}[5m]) / rate(fc25_scraper_requests_total[5m]) * 100",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -94,14 +103,14 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "fc25_active_ea_sessions",
+          "expr": "sum(fc25_active_ea_sessions)",
           "refId": "A"
         }
       ],
       "options": {
         "graphMode": "area",
         "orientation": "auto",
-        "textMode": "auto",
+        "textMode": "value_and_name",
         "colorMode": "value",
         "reduceOptions": {
           "values": false,
@@ -114,8 +123,8 @@
             "mode": "absolute",
             "steps": [
               {"color": "red", "value": null},
-              {"color": "yellow", "value": 5},
-              {"color": "green", "value": 10}
+              {"color": "yellow", "value": 3},
+              {"color": "green", "value": 5}
             ]
           }
         }
@@ -128,7 +137,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "avg(fc25_session_pool_healthy / fc25_session_pool_size) * 100",
+          "expr": "sum(fc25_session_pool_healthy) / sum(fc25_session_pool_size) * 100",
           "refId": "A"
         }
       ],
@@ -193,7 +202,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "fc25_db_pool_active",
+          "expr": "sum(fc25_db_pool_active)",
           "refId": "A"
         }
       ],
@@ -215,7 +224,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "fc25_pending_trades",
+          "expr": "sum(fc25_pending_trades)",
           "refId": "A"
         }
       ],
@@ -234,7 +243,7 @@
       "id": 10,
       "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
       "title": "Error Rate by Type",
-      "type": "graph",
+      "type": "timeseries",
       "targets": [
         {
           "expr": "rate(fc25_scraper_errors_total[5m])",
@@ -242,6 +251,70 @@
           "refId": "A"
         }
       ],
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "barAlignment": 0,
+            "lineWidth": 1,
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "spanNulls": false,
+            "insertNulls": false,
+            "showPoints": "auto",
+            "pointSize": 5,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "axisCenteredZero": false,
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "vis": false
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "reqps"
+        }
+      },
       "yaxes": [
         {"format": "short", "logBase": 1, "show": true},
         {"format": "short", "logBase": 1, "show": true}
@@ -467,7 +540,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "avg(fc25_trade_completion_pressure) * 100",
+          "expr": "sum(fc25_trade_completion_pressure) * 100",
           "refId": "A"
         }
       ],
@@ -534,7 +607,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "fc25_db_pool_active",
+          "expr": "sum(fc25_db_pool_active)",
           "refId": "A"
         }
       ],
@@ -563,5 +636,31 @@
   "time": {
     "from": "now-6h",
     "to": "now"
-  }
+  },
+  "timepicker": {},
+  "templating": {
+    "list": [
+      {
+        "current": {
+          "selected": false,
+          "text": "Prometheus",
+          "value": "Prometheus"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Datasource",
+        "multi": false,
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "type": "datasource"
+      }
+    ]
+  },
+  "tags": ["scraper", "monitoring", "ea-fc25"],
+  "style": "dark",
+  "weekStart": ""
 }

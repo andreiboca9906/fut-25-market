@@ -49,7 +49,7 @@ circuit_breaker_gauge = Gauge("fc25_circuit_breaker_status", "Circuit breaker st
 # Data Quality Metrics
 price_freshness_gauge = Gauge("fc25_price_freshness_minutes", "Average price age in minutes", ["tier"])
 
-verified_trades_gauge = Gauge("fc25_verified_trades_ratio", "Ratio of verified to total trades")
+trade_completion_pressure_gauge = Gauge("fc25_trade_completion_pressure", "Ratio of sold trades to pending trades")
 
 missing_prices_gauge = Gauge("fc25_missing_prices_count", "Number of players without prices")
 
@@ -165,12 +165,15 @@ class QualityMetrics:
     async def update_verification_metrics():
         """Update trade verification metrics"""
         stats = await sync_to_async(
-            lambda: TradeWatch.objects.aggregate(total=Count("id"), sold=Count("id", filter=Q(status="sold")))
+            lambda: TradeWatch.objects.aggregate(
+                pending=Count("id", filter=Q(status="pending")), 
+                sold=Count("id", filter=Q(status="sold"))
+            )
         )()
 
-        if stats["total"] > 0:
-            ratio = stats["sold"] / stats["total"]
-            verified_trades_gauge.set(ratio)
+        if stats["pending"] > 0:
+            ratio = stats["sold"] / stats["pending"]
+            trade_completion_pressure_gauge.set(ratio)
 
         # Also update pending trades
         pending_count = await sync_to_async(lambda: TradeWatch.objects.filter(status="pending").count())()

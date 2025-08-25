@@ -463,11 +463,11 @@
     {
       "id": 18,
       "gridPos": {"x": 12, "y": 34, "w": 12, "h": 6},
-      "title": "Trade Verification Ratio",
+      "title": "Trade Completion Pressure",
       "type": "gauge",
       "targets": [
         {
-          "expr": "avg(fc25_verified_trades_ratio) * 100",
+          "expr": "avg(fc25_trade_completion_pressure) * 100",
           "refId": "A"
         }
       ],

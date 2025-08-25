@@ -101,12 +101,14 @@ def scrape_market_prices(self, platform: str = "ps"):
                                         lambda: Player.objects.filter(resource_id=def_id).first()
                                     )()
                                     if player_obj:
-                                        await sync_to_async(PlayerPriceHistory.objects.create)(
-                                            player=player_obj,
-                                            platform=platform,
-                                            price=Decimal(price),
-                                            fetched_at=now,
-                                        )
+                                        await sync_to_async(
+                                            lambda: PlayerPriceHistory.objects.create(
+                                                player=player_obj,
+                                                platform=platform,
+                                                price=Decimal(price),
+                                                fetched_at=now,
+                                            )
+                                        )()
 
                                         job.success_count += 1
                                         logger.info(
@@ -121,11 +123,13 @@ def scrape_market_prices(self, platform: str = "ps"):
                                 else:
                                     # No price available - skip, don't retry
                                     job.failure_count += 1
-                                    await sync_to_async(PriceScrapeFailure.objects.create)(
-                                        job=job,
-                                        player_id=def_id,
-                                        reason="No transfer market listings found",
-                                    )
+                                    await sync_to_async(
+                                        lambda: PriceScrapeFailure.objects.create(
+                                            job=job,
+                                            player_id=def_id,
+                                            reason="No transfer market listings found",
+                                        )
+                                    )()
                                     logger.info(
                                         "No listings found, skipping", extra={"job_id": job.id, "resource_id": def_id}
                                     )
@@ -138,12 +142,14 @@ def scrape_market_prices(self, platform: str = "ps"):
                                 if retry_count > max_retries:
                                     # Max retries reached, give up on this player
                                     job.failure_count += 1
-                                    await sync_to_async(PriceScrapeFailure.objects.create)(
-                                        job=job,
-                                        player_id=def_id,
-                                        reason=f"Rate limited after {max_retries} retries",
-                                        http_status=429,
-                                    )
+                                    await sync_to_async(
+                                        lambda: PriceScrapeFailure.objects.create(
+                                            job=job,
+                                            player_id=def_id,
+                                            reason=f"Rate limited after {max_retries} retries",
+                                            http_status=429,
+                                        )
+                                    )()
                                     logger.warning(
                                         "Rate limit: max retries reached, skipping player",
                                         extra={"job_id": job.id, "resource_id": def_id, "retry_count": retry_count},
@@ -164,14 +170,17 @@ def scrape_market_prices(self, platform: str = "ps"):
 
                             except Exception as ex:
                                 job.failure_count += 1
-                                await sync_to_async(PriceScrapeFailure.objects.create)(
-                                    job=job,
-                                    player_id=def_id,
-                                    reason=str(ex),
-                                )
+                                error_msg = str(ex)
+                                await sync_to_async(
+                                    lambda: PriceScrapeFailure.objects.create(
+                                        job=job,
+                                        player_id=def_id,
+                                        reason=error_msg,
+                                    )
+                                )()
                                 logger.error(
                                     "Failed to scrape price",
-                                    extra={"job_id": job.id, "resource_id": def_id, "error": str(ex)},
+                                    extra={"job_id": job.id, "resource_id": def_id, "error": error_msg},
                                 )
                                 break  # Don't retry on other errors
 
@@ -261,8 +270,6 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
 
             return row[0]
 
-        sid = await sync_to_async(get_active_session)()
-
         success_count = 0
         failure_count = 0
         trades_collected = 0
@@ -270,175 +277,229 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
         # Initialize adaptive throttler
         throttler = AdaptiveThrottler()
 
-        # Initialize circuit breaker
-        breaker = await circuit_breaker_manager.get_breaker(tier, sid)
+        # Session retry logic
+        max_session_retries = 3
+        session_retry_count = 0
 
-        # Check if circuit is open globally
-        if await breaker.is_open_globally():
-            logger.warning(f"Circuit breaker is open for tier {tier}, skipping scrape")
-            return
+        while session_retry_count < max_session_retries:
+            try:
+                # Get session ID
+                sid = await sync_to_async(get_active_session)()
 
-        async with FutClient(x_ut_sid=sid) as client:
-            for player_id in player_ids:
-                try:
-                    # Get player's resource_id
-                    player = await sync_to_async(Player.objects.filter(id=player_id).first)()
+                # Initialize circuit breaker
+                breaker = await circuit_breaker_manager.get_breaker(tier, sid)
 
-                    if not player or not player.resource_id:
-                        continue
+                # Check if circuit is open globally
+                if await breaker.is_open_globally():
+                    logger.warning(f"Circuit breaker is open for tier {tier}, skipping scrape")
+                    return
 
-                    # Get adaptive delay
-                    delay = await throttler.get_adjusted_delay(tier)
-                    await asyncio.sleep(delay)
-
-                    # Collect auctions from single page (optimized for trade ID checking)
-                    all_auctions = []
-
-                    for page in range(1, 2):  # Max 1 page
-                        # Check circuit breaker before each request
-                        if await breaker.is_open_globally():
-                            logger.warning("Circuit breaker opened during scraping, stopping")
-                            return
-
-                        params = PlayerSearchParameters(page=page, resource_id=player.resource_id)
-
-                        # Execute with circuit breaker
-                        request_start = time.time()
+                async with FutClient(x_ut_sid=sid) as client:
+                    for player_id in player_ids:
                         try:
-                            res = await client.search_players(params)
-                            await breaker.record_success()
-                        except Exception as e:
-                            await breaker.record_failure(e)
-                            raise
-                        finally:
-                            request_end = time.time()
+                            # Get player's resource_id
+                            player = await sync_to_async(Player.objects.filter(id=player_id).first)()
 
-                        if res.auctions:
-                            # Check if any trade IDs are already saved (optimization: check last trade ID first)
-                            should_continue = False
-                            if res.auctions:
-                                # Check last trade ID first for optimization
-                                last_auction = res.auctions[-1]
-                                last_trade_exists = await sync_to_async(
-                                    lambda: TradeWatch.objects.filter(trade_id=str(last_auction.trade_id)).exists()
-                                )()
+                            if not player or not player.resource_id:
+                                continue
 
-                                # If last trade ID is already saved, skip checking others and don't continue
-                                if not last_trade_exists:
-                                    # Check if any trade IDs in this page are new
-                                    existing_trade_ids = set(
-                                        await sync_to_async(
-                                            lambda: list(
-                                                TradeWatch.objects.filter(
-                                                    trade_id__in=[str(a.trade_id) for a in res.auctions]
-                                                ).values_list("trade_id", flat=True)
-                                            )
+                            # Get adaptive delay
+                            delay = await throttler.get_adjusted_delay(tier)
+                            await asyncio.sleep(delay)
+
+                            # Collect auctions from single page (optimized for trade ID checking)
+                            all_auctions = []
+
+                            for page in range(1, 2):  # Max 1 page
+                                # Check circuit breaker before each request
+                                if await breaker.is_open_globally():
+                                    logger.warning("Circuit breaker opened during scraping, stopping")
+                                    return
+
+                                params = PlayerSearchParameters(page=page, resource_id=player.resource_id)
+
+                                # Execute with circuit breaker
+                                request_start = time.time()
+                                try:
+                                    res = await client.search_players(params)
+                                    await breaker.record_success()
+                                except SessionExpiredError as e:
+                                    # Session expired, need to get new session and retry
+                                    logger.warning(
+                                        f"Session expired for tier {tier}, getting new session",
+                                        extra={"tier": tier, "session_id": sid},
+                                    )
+                                    raise  # Re-raise to trigger outer catch block
+                                except Exception as e:
+                                    await breaker.record_failure(e)
+                                    raise
+                                finally:
+                                    request_end = time.time()
+
+                                if res.auctions:
+                                    # Check if any trade IDs are already saved (optimization: check last trade ID first)
+                                    should_continue = False
+                                    if res.auctions:
+                                        # Check last trade ID first for optimization
+                                        last_auction = res.auctions[-1]
+                                        last_trade_exists = await sync_to_async(
+                                            lambda: TradeWatch.objects.filter(
+                                                trade_id=str(last_auction.trade_id)
+                                            ).exists()
                                         )()
+
+                                        # If last trade ID is already saved, skip checking others and don't continue
+                                        if not last_trade_exists:
+                                            # Check if any trade IDs in this page are new
+                                            existing_trade_ids = set(
+                                                await sync_to_async(
+                                                    lambda: list(
+                                                        TradeWatch.objects.filter(
+                                                            trade_id__in=[str(a.trade_id) for a in res.auctions]
+                                                        ).values_list("trade_id", flat=True)
+                                                    )
+                                                )()
+                                            )
+
+                                            # Only continue if we found new trade IDs
+                                            new_auctions = [
+                                                a for a in res.auctions if str(a.trade_id) not in existing_trade_ids
+                                            ]
+                                            if new_auctions:
+                                                all_auctions.extend(new_auctions)
+                                                should_continue = len(res.auctions) == 21  # Full page
+
+                                    # Stop pagination if no new auctions or not a full page
+                                    if not should_continue:
+                                        break
+
+                                    # Add delay between pages
+                                    await asyncio.sleep(human_delay(0.8, variance=0.2))
+                                else:
+                                    break  # No more results
+
+                            # Process collected auctions
+                            if all_auctions:
+                                # Filter auctions with buy now prices
+                                buyable_auctions = [a for a in all_auctions if a.buy_now_price]
+
+                                if buyable_auctions:
+                                    # Find minimum price for current market value
+                                    sorted_by_price = sorted(buyable_auctions, key=lambda x: x.buy_now_price)
+                                    min_price = sorted_by_price[0].buy_now_price
+
+                                    # Track ALL auctions
+                                    for auction in buyable_auctions:
+                                        if auction.expires:
+                                            expires_at = timezone.now() + timedelta(seconds=auction.expires)
+                                            created = await sync_to_async(
+                                                lambda: TradeWatch.objects.get_or_create(
+                                                    trade_id=str(auction.trade_id),
+                                                    defaults={
+                                                        "player": player,
+                                                        "listed_price": Decimal(auction.buy_now_price),
+                                                        "expires_at": expires_at,
+                                                        "discovered_at": timezone.now(),
+                                                    },
+                                                )[1]
+                                            )()
+
+                                            if created:
+                                                trades_collected += 1
+
+                                    # Note: PlayerPriceHistory only records verified sold trades
+                                    # Unverified scraping data is tracked via TradeWatch and current PlayerPrice
+
+                                    success_count += 1
+
+                                    # Record success metrics
+                                    PrometheusMetrics.record_request(
+                                        tier=tier,
+                                        response_time=request_end - request_start,
+                                        success=True,
+                                        session_id=sid,
                                     )
 
-                                    # Only continue if we found new trade IDs
-                                    new_auctions = [
-                                        a for a in res.auctions if str(a.trade_id) not in existing_trade_ids
-                                    ]
-                                    if new_auctions:
-                                        all_auctions.extend(new_auctions)
-                                        should_continue = len(res.auctions) == 21  # Full page
+                                    logger.debug(
+                                        "Price scraped with pagination",
+                                        extra={
+                                            "tier": tier,
+                                            "player_id": player_id,
+                                            "price": min_price,
+                                            "total_listings": len(all_auctions),
+                                            "trades_tracked": trades_collected,
+                                        },
+                                    )
+                            else:
+                                failure_count += 1
 
-                            # Stop pagination if no new auctions or not a full page
-                            if not should_continue:
-                                break
+                        except RateLimitError as e:
+                            logger.warning(f"Rate limit hit while scraping {tier} tier", extra={"tier": tier})
+                            # Record rate limit hit
+                            RiskMetrics.record_rate_limit(session_id=sid)
 
-                            # Add delay between pages
-                            await asyncio.sleep(human_delay(0.8, variance=0.2))
-                        else:
-                            break  # No more results
+                            # Record failed request metric
+                            if "request_start" in locals():
+                                PrometheusMetrics.record_request(
+                                    tier=tier, response_time=time.time() - request_start, success=False, session_id=sid
+                                )
 
-                    # Process collected auctions
-                    if all_auctions:
-                        # Filter auctions with buy now prices
-                        buyable_auctions = [a for a in all_auctions if a.buy_now_price]
+                            # Back off for this tier
+                            await asyncio.sleep(human_delay(10, variance=0.3))
 
-                        if buyable_auctions:
-                            # Find minimum price for current market value
-                            sorted_by_price = sorted(buyable_auctions, key=lambda x: x.buy_now_price)
-                            min_price = sorted_by_price[0].buy_now_price
+                        except SessionExpiredError:
+                            # This is handled in outer try/catch, just re-raise
+                            raise
 
-                            # Track ALL auctions
-                            for auction in buyable_auctions:
-                                if auction.expires:
-                                    expires_at = timezone.now() + timedelta(seconds=auction.expires)
-                                    created = await sync_to_async(
-                                        lambda: TradeWatch.objects.get_or_create(
-                                            trade_id=str(auction.trade_id),
-                                            defaults={
-                                                "player": player,
-                                                "listed_price": Decimal(auction.buy_now_price),
-                                                "expires_at": expires_at,
-                                                "discovered_at": timezone.now(),
-                                            },
-                                        )[1]
-                                    )()
+                        except Exception as e:
+                            failure_count += 1
 
-                                    if created:
-                                        trades_collected += 1
-
-                            # Note: PlayerPriceHistory only records verified sold trades
-                            # Unverified scraping data is tracked via TradeWatch and current PlayerPrice
-
-                            success_count += 1
-
-                            # Record success metrics
-                            PrometheusMetrics.record_request(
-                                tier=tier, response_time=request_end - request_start, success=True, session_id=sid
+                            # Record error metrics
+                            RiskMetrics.record_error(
+                                tier=tier, error_type=ErrorTracker.categorize_error(e), session_id=sid
+                            )
+                            await ErrorTracker.log_error(
+                                ErrorTracker.categorize_error(e), e, {"tier": tier, "player_id": player_id}
                             )
 
-                            logger.debug(
-                                "Price scraped with pagination",
-                                extra={
-                                    "tier": tier,
-                                    "player_id": player_id,
-                                    "price": min_price,
-                                    "total_listings": len(all_auctions),
-                                    "trades_tracked": trades_collected,
-                                },
+                            # Record failed request metric
+                            if "request_start" in locals():
+                                PrometheusMetrics.record_request(
+                                    tier=tier, response_time=time.time() - request_start, success=False, session_id=sid
+                                )
+
+                            logger.error(
+                                f"Error scraping player in {tier} tier",
+                                extra={"tier": tier, "player_id": player_id, "error": str(e)},
+                                exc_info=True,  # This will log the full traceback
                             )
-                    else:
-                        failure_count += 1
 
-                except RateLimitError as e:
-                    logger.warning(f"Rate limit hit while scraping {tier} tier", extra={"tier": tier})
-                    # Record rate limit hit
-                    RiskMetrics.record_rate_limit(session_id=sid)
+                # If we get here, session was successful, break out of retry loop
+                break
 
-                    # Record failed request metric
-                    if "request_start" in locals():
-                        PrometheusMetrics.record_request(
-                            tier=tier, response_time=time.time() - request_start, success=False, session_id=sid
-                        )
+            except SessionExpiredError as e:
+                session_retry_count += 1
 
-                    # Back off for this tier
-                    await asyncio.sleep(human_delay(10, variance=0.3))
-
-                except Exception as e:
-                    failure_count += 1
-
-                    # Record error metrics
-                    RiskMetrics.record_error(tier=tier, error_type=ErrorTracker.categorize_error(e), session_id=sid)
-                    await ErrorTracker.log_error(
-                        ErrorTracker.categorize_error(e), e, {"tier": tier, "player_id": player_id}
-                    )
-
-                    # Record failed request metric
-                    if "request_start" in locals():
-                        PrometheusMetrics.record_request(
-                            tier=tier, response_time=time.time() - request_start, success=False, session_id=sid
-                        )
-
+                if session_retry_count >= max_session_retries:
                     logger.error(
-                        f"Error scraping player in {tier} tier",
-                        extra={"tier": tier, "player_id": player_id, "error": str(e)},
-                        exc_info=True,  # This will log the full traceback
+                        f"Max session retries ({max_session_retries}) reached for tier {tier}", extra={"tier": tier}
                     )
+                    raise
+
+                # Try to get a new session
+                logger.info(
+                    f"Session expired, attempting to get new session (attempt {session_retry_count}/{max_session_retries})",
+                    extra={"tier": tier},
+                )
+
+                try:
+                    # Wait a bit before getting new session
+                    await asyncio.sleep(2)
+                    # Session will be fetched in next iteration of loop
+
+                except Exception:
+                    logger.error(f"No active sessions available for tier {tier}")
+                    raise
 
         logger.info(
             f"Completed {tier} tier scrape",
@@ -500,130 +561,170 @@ def verify_pending_trades(self, batch_size: int = 60):
 
             return row[0]
 
-        try:
-            sid = await sync_to_async(get_active_session)()
-        except SessionExpiredError as e:
-            logger.error(f"[TRADE_VERIFY] No active session available: {str(e)}")
-            return
-        except Exception as e:
-            logger.error(f"[TRADE_VERIFY] Failed to get active session: {str(e)}")
-            return
+        # Session retry logic
+        max_session_retries = 3
+        session_retry_count = 0
+        verification_completed = False
 
-        async with FutClient(x_ut_sid=sid) as client:
-            # Create market service
-            market_service = MarketService(client.session, sid)
+        while session_retry_count < max_session_retries and not verification_completed:
+            try:
+                sid = await sync_to_async(get_active_session)()
 
-            # Process in batches of 20 (API limit)
-            for i in range(0, len(pending_trades), 20):
-                batch = pending_trades[i : i + 20]
-                trade_ids = [trade.trade_id for trade in batch]
+                async with FutClient(x_ut_sid=sid) as client:
+                    # Create market service
+                    market_service = MarketService(client.session, sid)
 
-                # Add human-like delay before batch request
-                await asyncio.sleep(human_delay(1.0, variance=0.2))
+                    # Process in batches of 20 (API limit)
+                    for i in range(0, len(pending_trades), 20):
+                        batch = pending_trades[i : i + 20]
+                        trade_ids = [trade.trade_id for trade in batch]
 
-                try:
-                    # Get status for trades in this batch
-                    trade_statuses = await market_service.get_trade_status(trade_ids)
+                        # Add human-like delay before batch request
+                        await asyncio.sleep(human_delay(1.0, variance=0.2))
 
-                    verified_count = 0
-                    sold_count = 0
-                    expired_count = 0
-                    active_count = 0
-
-                    # Process each trade based on its status
-                    for trade in batch:
-                        trade_id_str = str(trade.trade_id)
-
-                        if trade_id_str in trade_statuses:
-                            status_info = trade_statuses[trade_id_str]
-
-                            if status_info.status == "sold":
-                                trade.status = TradeWatch.SOLD
-                                sold_count += 1
-
-                                # Update current_price with verified sold price
-                                try:
-                                    await sync_to_async(
-                                        PlayerPrice.objects.update_or_create(player_id=trade.player_id)
-                                    )(current_price=trade.listed_price, last_updated=timezone.now())
-
-                                    # Record price update metric
-                                    if hasattr(trade.player, "tier") and trade.player.tier:
-                                        PrometheusMetrics.record_price_update(trade.player.tier.tier)
-
-                                except Exception as price_error:
-                                    logger.error(
-                                        f"[TRADE_VERIFY] Failed to update price for player {trade.player_id}: {str(price_error)}"
-                                    )
-
-                                # Record verified sale in history (only for confirmed sales)
-                                try:
-                                    await sync_to_async(PlayerPriceHistory.objects.create)(
-                                        player=trade.player,
-                                        platform="ps",
-                                        price=trade.listed_price,
-                                        trade_id=trade.trade_id,
-                                        is_verified=True,
-                                        fetched_at=timezone.now(),
-                                    )
-                                except Exception as history_error:
-                                    logger.error(
-                                        f"[TRADE_VERIFY] Failed to create price history for trade {trade.trade_id}: {str(history_error)}"
-                                    )
-
-                                verified_count += 1
-
-                                logger.debug(
-                                    "Trade verified as sold",
-                                    extra={
-                                        "trade_id": trade.trade_id,
-                                        "player_id": trade.player_id,
-                                        "price": float(trade.listed_price),
-                                    },
-                                )
-
-                            elif status_info.status == "expired":
-                                trade.status = TradeWatch.EXPIRED
-                                expired_count += 1
-
-                            elif status_info.status == "active":
-                                # Still active even though expires_at passed - check again later
-                                trade.status = TradeWatch.ACTIVE
-                                active_count += 1
-
-                        else:
-                            # Trade not found in response - mark as expired
-                            trade.status = TradeWatch.EXPIRED
-                            expired_count += 1
-
-                        # Update checked_at and save
-                        trade.checked_at = timezone.now()
                         try:
-                            await sync_to_async(trade.save)()
-                        except Exception as save_error:
-                            logger.error(f"[TRADE_VERIFY] Failed to save trade {trade.trade_id}: {str(save_error)}")
+                            # Get status for trades in this batch
+                            trade_statuses = await market_service.get_trade_status(trade_ids)
 
-                    logger.info(
-                        f"[TRADE_VERIFY] Batch verification completed - sold: {sold_count}, expired: {expired_count}, active: {active_count}, verified: {verified_count}",
-                        extra={
-                            "batch_size": len(batch),
-                            "verified_count": verified_count,
-                            "sold_count": sold_count,
-                            "expired_count": expired_count,
-                            "active_count": active_count,
-                        },
-                    )
+                            verified_count = 0
+                            sold_count = 0
+                            expired_count = 0
+                            active_count = 0
 
-                except Exception as e:
-                    logger.error(
-                        f"[TRADE_VERIFY] Error verifying trades batch: {str(e)}",
-                        extra={"error": str(e), "trade_count": len(trade_ids)},
-                        exc_info=True,
-                    )
-                    # Mark batch as checked but keep pending status
-                    for trade in batch:
-                        trade.checked_at = timezone.now()
-                        await sync_to_async(trade.save)()
+                            # Process each trade based on its status
+                            for trade in batch:
+                                trade_id_str = str(trade.trade_id)
+
+                                if trade_id_str in trade_statuses:
+                                    status_info = trade_statuses[trade_id_str]
+
+                                    if status_info.status == "sold":
+                                        trade.status = TradeWatch.SOLD
+                                        sold_count += 1
+
+                                        # Update current_price with verified sold price
+                                        try:
+                                            await sync_to_async(
+                                                lambda: PlayerPrice.objects.update_or_create(
+                                                    player_id=trade.player_id,
+                                                    defaults={
+                                                        "current_price": trade.listed_price,
+                                                        "last_updated": timezone.now(),
+                                                    },
+                                                )
+                                            )()
+
+                                            # Record price update metric
+                                            try:
+                                                player_tier = await sync_to_async(
+                                                    lambda: getattr(trade.player, "tier", None)
+                                                )()
+                                                if player_tier:
+                                                    PrometheusMetrics.record_price_update(player_tier.tier)
+                                            except Exception:
+                                                # Ignore tier metric errors - not critical
+                                                pass
+
+                                        except Exception as price_error:
+                                            logger.error(
+                                                f"[TRADE_VERIFY] Failed to update price for player {trade.player_id}: {str(price_error)}",
+                                                exc_info=True,
+                                            )
+
+                                        # Record verified sale in history (only for confirmed sales)
+                                        try:
+                                            await sync_to_async(
+                                                lambda: PlayerPriceHistory.objects.create(
+                                                    player=trade.player,
+                                                    platform="ps",
+                                                    price=trade.listed_price,
+                                                    trade_id=trade.trade_id,
+                                                    is_verified=True,
+                                                    fetched_at=timezone.now(),
+                                                )
+                                            )()
+                                        except Exception as history_error:
+                                            logger.error(
+                                                f"[TRADE_VERIFY] Failed to create price history for trade {trade.trade_id}: {str(history_error)}"
+                                            )
+
+                                        verified_count += 1
+
+                                        logger.debug(
+                                            "Trade verified as sold",
+                                            extra={
+                                                "trade_id": trade.trade_id,
+                                                "player_id": trade.player_id,
+                                                "price": float(trade.listed_price),
+                                            },
+                                        )
+
+                                    elif status_info.status == "expired":
+                                        trade.status = TradeWatch.EXPIRED
+                                        expired_count += 1
+
+                                    elif status_info.status == "active":
+                                        # Still active even though expires_at passed - check again later
+                                        trade.status = TradeWatch.ACTIVE
+                                        active_count += 1
+
+                                else:
+                                    # Trade not found in response - mark as expired
+                                    trade.status = TradeWatch.EXPIRED
+                                    expired_count += 1
+
+                                # Update checked_at and save
+                                trade.checked_at = timezone.now()
+                                try:
+                                    await sync_to_async(trade.save)()
+                                except Exception as save_error:
+                                    logger.error(
+                                        f"[TRADE_VERIFY] Failed to save trade {trade.trade_id}: {str(save_error)}"
+                                    )
+
+                            logger.info(
+                                f"[TRADE_VERIFY] Batch verification completed - sold: {sold_count}, expired: {expired_count}, active: {active_count}, verified: {verified_count}",
+                                extra={
+                                    "batch_size": len(batch),
+                                    "verified_count": verified_count,
+                                    "sold_count": sold_count,
+                                    "expired_count": expired_count,
+                                    "active_count": active_count,
+                                },
+                            )
+
+                        except SessionExpiredError:
+                            # Session expired during processing, need to retry
+                            logger.warning("[TRADE_VERIFY] Session expired during batch processing")
+                            raise
+
+                        except Exception as e:
+                            logger.error(
+                                f"[TRADE_VERIFY] Error verifying trades batch: {str(e)}",
+                                extra={"error": str(e), "trade_count": len(trade_ids)},
+                                exc_info=True,
+                            )
+                            # Mark batch as checked but keep pending status
+                            for trade in batch:
+                                trade.checked_at = timezone.now()
+                                await sync_to_async(trade.save)()
+
+                # If we get here, verification completed successfully
+                verification_completed = True
+
+            except SessionExpiredError as e:
+                session_retry_count += 1
+
+                if session_retry_count >= max_session_retries:
+                    logger.error(f"[TRADE_VERIFY] Max session retries ({max_session_retries}) reached")
+                    return
+
+                logger.info(
+                    f"[TRADE_VERIFY] Session expired, attempting to get new session (attempt {session_retry_count}/{max_session_retries})"
+                )
+
+                # Wait a bit before getting new session
+                await asyncio.sleep(2)
 
     try:
         asyncio.run(_run())

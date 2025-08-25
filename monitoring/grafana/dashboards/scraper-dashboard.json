@@ -14,11 +14,11 @@
     {
       "id": 22,
       "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
-      "title": "Players With Prices by Rating (Count)",
+      "title": "Players Without Prices by Rating (Count)",
       "type": "bargauge", 
       "targets": [
         {
-          "expr": "sum by (rating_range) (fc25_players_with_prices_by_rating)",
+          "expr": "sum by (rating_range) (fc25_total_players_by_rating - fc25_players_with_prices_by_rating)",
           "legendFormat": "{{rating_range}}",
           "refId": "A"
         }
@@ -36,9 +36,9 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              {"color": "red", "value": null},
-              {"color": "yellow", "value": 1000},
-              {"color": "green", "value": 5000}
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 100}
             ]
           },
           "unit": "short"

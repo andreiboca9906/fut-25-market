@@ -100,6 +100,12 @@ Automatically categorizes players into 5 tiers based on market activity:
 - **Session Management**: Automatic rotation and health checks
 - **Pagination Optimization**: Reduced from 5 pages to 1 page with trade ID deduplication
 
+### Session Resilience
+- **Automatic Session Refresh**: Tasks automatically retry with fresh session on expiry
+- **Max Retry Attempts**: Up to 3 attempts to get new session before failing
+- **Session Isolation**: Each task gets fresh session from DB on retry
+- **Circuit Breaker Integration**: New sessions update circuit breaker state
+
 ---
 
-*Last Updated: After Phase 6 - All features implemented*
+*Last Updated: After session refresh implementation*

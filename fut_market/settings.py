@@ -301,7 +301,7 @@ CELERY_BEAT_SCHEDULE = {
     },
     "verify-trades": {
         "task": "players.tasks.verify_pending_trades",
-        "schedule": 5.0,  # Every 5 seconds
+        "schedule": 30.0,  # Every 30 seconds
     },
     "recalculate-hotness": {
         "task": "players.tasks.recalculate_player_tiers",

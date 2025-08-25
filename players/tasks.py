@@ -108,10 +108,6 @@ def scrape_market_prices(self, platform: str = "ps"):
                                             fetched_at=now,
                                         )
 
-                                        # Record price update metric
-                                        if hasattr(player_obj, "tier") and player_obj.tier:
-                                            PrometheusMetrics.record_price_update(player_obj.tier.tier)
-
                                         job.success_count += 1
                                         logger.info(
                                             "Price updated",

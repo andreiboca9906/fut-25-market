@@ -476,10 +476,10 @@ def verify_pending_trades(self, batch_size: int = 60):
         )()
 
         if not pending_trades:
-            logger.info("[TRADE_VERIFY] No expired trades to verify")
+            logger.info("[TRADE_VERIFY] No pending trades to verify")
             return
 
-        logger.info(f"[TRADE_VERIFY] Found {len(pending_trades)} expired trades to verify")
+        logger.info(f"[TRADE_VERIFY] Found {len(pending_trades)} pending trades to verify")
 
         # Get active session
         def get_active_session():

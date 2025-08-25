@@ -12,7 +12,7 @@ from django.http import HttpResponse
 from django.utils import timezone
 from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
 
-from players.models import PlayerPrice, TradeWatch
+from players.models import Player, PlayerPrice, TradeWatch
 from utils.prometheus_multiprocess import generate_metrics
 
 # Check if we're in multiprocess mode (Celery workers)
@@ -52,6 +52,10 @@ price_freshness_gauge = Gauge("fc25_price_freshness_minutes", "Average price age
 trade_completion_pressure_gauge = Gauge("fc25_trade_completion_pressure", "Ratio of sold trades to pending trades")
 
 missing_prices_gauge = Gauge("fc25_missing_prices_count", "Number of players without prices")
+
+missing_prices_by_rating_gauge = Gauge(
+    "fc25_missing_prices_by_rating", "Number of players without prices by rating range", ["rating_range"]
+)
 
 stale_prices_gauge = Gauge("fc25_stale_prices_count", "Number of prices older than 2 hours", ["tier"])
 
@@ -186,6 +190,27 @@ class QualityMetrics:
         for tier in tiers:
             count = await sync_to_async(lambda: PlayerPrice.objects.filter(player__tier__tier=tier).count())()
             tier_player_count_gauge.labels(tier=tier).set(count)
+
+    @staticmethod
+    async def update_missing_prices_by_rating():
+        """Update players without prices by rating ranges"""
+        rating_ranges = [
+            ("90-100", 90, 100),
+            ("80-89", 80, 89),
+            ("70-79", 70, 79),
+            ("60-69", 60, 69),
+            ("50-59", 50, 59),
+            ("Below 50", 0, 49),
+        ]
+
+        for range_name, min_rating, max_rating in rating_ranges:
+            # Count players in this rating range that have NO PlayerPrice records
+            count = await sync_to_async(
+                lambda: Player.objects.filter(rating__gte=min_rating, rating__lte=max_rating)
+                .exclude(id__in=PlayerPrice.objects.values_list("player_id", flat=True))
+                .count()
+            )()
+            missing_prices_by_rating_gauge.labels(rating_range=range_name).set(count)
 
 
 class SystemMetrics:

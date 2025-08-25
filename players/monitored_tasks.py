@@ -62,6 +62,7 @@ def update_metrics():
     async def _run():
         await QualityMetrics.update_freshness_metrics()
         await QualityMetrics.update_verification_metrics()
+        await QualityMetrics.update_missing_prices_by_rating()
         await SystemMetrics.update_celery_metrics()
         await SystemMetrics.update_session_metrics()
 

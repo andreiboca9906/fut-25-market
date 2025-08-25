@@ -12,8 +12,42 @@
   "liveNow": false,
   "panels": [
     {
+      "id": 22,
+      "gridPos": {"x": 0, "y": 0, "w": 24, "h": 8},
+      "title": "Players Without Prices by Rating",
+      "type": "bargauge",
+      "targets": [
+        {
+          "expr": "sum by (rating_range) (fc25_missing_prices_by_rating)",
+          "legendFormat": "{{rating_range}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "red", "value": 100}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    },
+    {
       "id": 1,
-      "gridPos": {"x": 0, "y": 0, "w": 8, "h": 8},
+      "gridPos": {"x": 0, "y": 8, "w": 8, "h": 8},
       "title": "Request Rate by Tier",
       "type": "graph",
       "targets": [
@@ -35,7 +69,7 @@
     },
     {
       "id": 2,
-      "gridPos": {"x": 8, "y": 0, "w": 8, "h": 8},
+      "gridPos": {"x": 8, "y": 8, "w": 8, "h": 8},
       "title": "Response Time Percentiles",
       "type": "graph",
       "targets": [
@@ -58,7 +92,7 @@
     },
     {
       "id": 3,
-      "gridPos": {"x": 16, "y": 0, "w": 8, "h": 8},
+      "gridPos": {"x": 16, "y": 8, "w": 8, "h": 8},
       "title": "Success Rate by Tier",
       "type": "graph",
       "targets": [
@@ -76,7 +110,7 @@
     },
     {
       "id": 4,
-      "gridPos": {"x": 0, "y": 8, "w": 4, "h": 4},
+      "gridPos": {"x": 0, "y": 16, "w": 4, "h": 4},
       "title": "Active Scrapers",
       "type": "stat",
       "targets": [
@@ -98,7 +132,7 @@
     },
     {
       "id": 5,
-      "gridPos": {"x": 4, "y": 8, "w": 4, "h": 4},
+      "gridPos": {"x": 4, "y": 16, "w": 4, "h": 4},
       "title": "Active EA Sessions",
       "type": "stat",
       "targets": [
@@ -132,7 +166,7 @@
     },
     {
       "id": 6,
-      "gridPos": {"x": 8, "y": 8, "w": 4, "h": 4},
+      "gridPos": {"x": 8, "y": 16, "w": 4, "h": 4},
       "title": "Session Pool Health",
       "type": "gauge",
       "targets": [
@@ -163,7 +197,7 @@
     },
     {
       "id": 7,
-      "gridPos": {"x": 12, "y": 8, "w": 4, "h": 4},
+      "gridPos": {"x": 12, "y": 16, "w": 4, "h": 4},
       "title": "Rate Limit Hits (1h)",
       "type": "stat",
       "targets": [
@@ -197,7 +231,7 @@
     },
     {
       "id": 8,
-      "gridPos": {"x": 16, "y": 8, "w": 4, "h": 4},
+      "gridPos": {"x": 16, "y": 16, "w": 4, "h": 4},
       "title": "DB Connections",
       "type": "stat",
       "targets": [
@@ -219,7 +253,7 @@
     },
     {
       "id": 9,
-      "gridPos": {"x": 20, "y": 8, "w": 4, "h": 4},
+      "gridPos": {"x": 20, "y": 16, "w": 4, "h": 4},
       "title": "Pending Trades",
       "type": "stat",
       "targets": [
@@ -241,7 +275,7 @@
     },
     {
       "id": 10,
-      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8},
       "title": "Error Rate by Type",
       "type": "timeseries",
       "targets": [
@@ -323,12 +357,12 @@
     },
     {
       "id": 11,
-      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "gridPos": {"x": 12, "y": 20, "w": 12, "h": 8},
       "title": "Queue Depth by Tier",
       "type": "graph",
       "targets": [
         {
-          "expr": "fc25_queue_depth",
+          "expr": "sum by (queue_name) (fc25_queue_depth)",
           "legendFormat": "{{queue_name}}",
           "refId": "A"
         }
@@ -341,7 +375,7 @@
     },
     {
       "id": 12,
-      "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8},
+      "gridPos": {"x": 0, "y": 28, "w": 12, "h": 8},
       "title": "Price Freshness by Tier (minutes)",
       "type": "heatmap",
       "targets": [
@@ -379,7 +413,7 @@
     },
     {
       "id": 13,
-      "gridPos": {"x": 12, "y": 20, "w": 12, "h": 8},
+      "gridPos": {"x": 12, "y": 28, "w": 12, "h": 8},
       "title": "Circuit Breaker Status",
       "type": "stat",
       "targets": [
@@ -410,7 +444,7 @@
     },
     {
       "id": 14,
-      "gridPos": {"x": 0, "y": 28, "w": 8, "h": 6},
+      "gridPos": {"x": 0, "y": 36, "w": 8, "h": 6},
       "title": "Stale Prices by Tier",
       "type": "bargauge",
       "targets": [
@@ -443,7 +477,7 @@
     },
     {
       "id": 15,
-      "gridPos": {"x": 8, "y": 28, "w": 8, "h": 6},
+      "gridPos": {"x": 8, "y": 36, "w": 8, "h": 6},
       "title": "Players per Tier",
       "type": "piechart",
       "targets": [
@@ -465,7 +499,7 @@
     },
     {
       "id": 16,
-      "gridPos": {"x": 16, "y": 28, "w": 8, "h": 6},
+      "gridPos": {"x": 16, "y": 36, "w": 8, "h": 6},
       "title": "Worker Utilization",
       "type": "bargauge",
       "targets": [
@@ -501,41 +535,38 @@
     },
     {
       "id": 17,
-      "gridPos": {"x": 0, "y": 34, "w": 12, "h": 6},
-      "title": "Missing Prices Count",
-      "type": "stat",
+      "gridPos": {"x": 0, "y": 42, "w": 12, "h": 6},
+      "title": "Stale Prices Gauge",
+      "type": "gauge",
       "targets": [
         {
-          "expr": "sum(fc25_missing_prices_count)",
+          "expr": "sum by (tier) (fc25_stale_prices_count)",
+          "legendFormat": "{{tier}}",
           "refId": "A"
         }
       ],
       "options": {
-        "graphMode": "area",
-        "orientation": "auto",
-        "textMode": "auto",
-        "colorMode": "value",
-        "reduceOptions": {
-          "values": false,
-          "calcs": ["lastNotNull"]
-        }
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "fieldConfig": {
         "defaults": {
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {"color": "green", "value": null},
-              {"color": "yellow", "value": 1000},
-              {"color": "red", "value": 5000}
+              {"color": "yellow", "value": 100},
+              {"color": "red", "value": 500}
             ]
-          }
+          },
+          "unit": "short"
         }
       }
     },
     {
       "id": 18,
-      "gridPos": {"x": 12, "y": 34, "w": 12, "h": 6},
+      "gridPos": {"x": 12, "y": 42, "w": 12, "h": 6},
       "title": "Trade Completion Pressure",
       "type": "gauge",
       "targets": [
@@ -566,7 +597,7 @@
     },
     {
       "id": 19,
-      "gridPos": {"x": 0, "y": 40, "w": 24, "h": 8},
+      "gridPos": {"x": 0, "y": 48, "w": 24, "h": 8},
       "title": "Price Updates Over Time",
       "type": "graph",
       "targets": [
@@ -584,7 +615,7 @@
     },
     {
       "id": 20,
-      "gridPos": {"x": 0, "y": 48, "w": 12, "h": 6},
+      "gridPos": {"x": 0, "y": 56, "w": 12, "h": 6},
       "title": "Session Expiration Rate",
       "type": "graph",
       "targets": [
@@ -602,7 +633,7 @@
     },
     {
       "id": 21,
-      "gridPos": {"x": 12, "y": 48, "w": 12, "h": 6},
+      "gridPos": {"x": 12, "y": 56, "w": 12, "h": 6},
       "title": "Database Connection Pool",
       "type": "gauge",
       "targets": [

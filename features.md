@@ -57,6 +57,8 @@ Automatically categorizes players into 5 tiers based on market activity:
 - **Two-Phase System**: Collect trade IDs → Verify after expiry
 - **Batch API Calls**: Check up to 20 trades per request
 - **Verified Pricing**: Only confirmed sold trades update current prices
+- **Trade ID Optimization**: Skip processing if trade IDs already exist in database
+- **Last Trade Check**: Check last trade ID first to skip entire pages efficiently
 
 ### Anti-Detection System
 - **Request Randomization**: Variable delays, batch sizes, and ordering
@@ -93,9 +95,10 @@ Automatically categorizes players into 5 tiers based on market activity:
   - Metrics update (every minute)
 
 ### API Integration
-- **EA FUT API**: Player search with pagination support
+- **EA FUT API**: Player search with optimized single-page pagination
 - **Trade Status API**: Batch trade verification
 - **Session Management**: Automatic rotation and health checks
+- **Pagination Optimization**: Reduced from 5 pages to 1 page with trade ID deduplication
 
 ---
 

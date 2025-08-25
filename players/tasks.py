@@ -12,7 +12,6 @@ from django.db import connection
 from django.utils import timezone
 
 from auth_api.services import FutClient
-from core.constants import TIER_SCAN_WINDOWS
 from core.exceptions import RateLimitError, SessionExpiredError
 from core.fut_models.search import PlayerSearchParameters
 from market.services import MarketService
@@ -102,11 +101,6 @@ def scrape_market_prices(self, platform: str = "ps"):
                                         lambda: Player.objects.filter(resource_id=def_id).first()
                                     )()
                                     if player_obj:
-                                        await sync_to_async(PlayerPrice.objects.update_or_create)(
-                                            player=player_obj,
-                                            platform=platform,
-                                            defaults={"current_price": Decimal(price), "last_updated": now},
-                                        )
                                         await sync_to_async(PlayerPriceHistory.objects.create)(
                                             player=player_obj,
                                             platform=platform,
@@ -277,9 +271,6 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
         failure_count = 0
         trades_collected = 0
 
-        # Calculate next scan time for this tier
-        next_scan = timezone.now() + TIER_SCAN_WINDOWS.get(tier, timedelta(hours=1))
-
         # Initialize adaptive throttler
         throttler = AdaptiveThrottler()
 
@@ -304,10 +295,10 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                     delay = await throttler.get_adjusted_delay(tier)
                     await asyncio.sleep(delay)
 
-                    # Collect auctions from multiple pages (max 5 pages)
+                    # Collect auctions from single page (optimized for trade ID checking)
                     all_auctions = []
 
-                    for page in range(1, 6):  # Max 5 pages
+                    for page in range(1, 2):  # Max 1 page
                         # Check circuit breaker before each request
                         if await breaker.is_open_globally():
                             logger.warning("Circuit breaker opened during scraping, stopping")
@@ -327,22 +318,36 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                             request_end = time.time()
 
                         if res.auctions:
-                            all_auctions.extend(res.auctions)
-
-                            # Check if we should continue pagination
+                            # Check if any trade IDs are already saved (optimization: check last trade ID first)
                             should_continue = False
-                            for auction in res.auctions:
-                                if auction.expires:
-                                    # Convert expires (seconds) to timestamp
-                                    expires_at = timezone.now() + timedelta(seconds=auction.expires)
+                            if res.auctions:
+                                # Check last trade ID first for optimization
+                                last_auction = res.auctions[-1]
+                                last_trade_exists = await sync_to_async(
+                                    lambda: TradeWatch.objects.filter(trade_id=str(last_auction.trade_id)).exists()
+                                )()
 
-                                    # Only continue if there might be auctions expiring before next scan
-                                    if expires_at < next_scan:
-                                        should_continue = True
-                                        break
+                                # If last trade ID is already saved, skip checking others and don't continue
+                                if not last_trade_exists:
+                                    # Check if any trade IDs in this page are new
+                                    existing_trade_ids = set(
+                                        await sync_to_async(
+                                            lambda: TradeWatch.objects.filter(
+                                                trade_id__in=[str(a.trade_id) for a in res.auctions]
+                                            ).values_list("trade_id", flat=True)
+                                        )()
+                                    )
 
-                            # Stop pagination if no more relevant auctions
-                            if not should_continue or len(res.auctions) < 21:  # Less than full page
+                                    # Only continue if we found new trade IDs
+                                    new_auctions = [
+                                        a for a in res.auctions if str(a.trade_id) not in existing_trade_ids
+                                    ]
+                                    if new_auctions:
+                                        all_auctions.extend(new_auctions)
+                                        should_continue = len(res.auctions) == 21  # Full page
+
+                            # Stop pagination if no new auctions or not a full page
+                            if not should_continue:
                                 break
 
                             # Add delay between pages
@@ -360,38 +365,24 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                             sorted_by_price = sorted(buyable_auctions, key=lambda x: x.buy_now_price)
                             min_price = sorted_by_price[0].buy_now_price
 
-                            # Store current minimum price
-                            await sync_to_async(PlayerPrice.objects.update_or_create)(
-                                player=player,
-                                platform=platform,
-                                defaults={"current_price": Decimal(min_price), "last_updated": timezone.now()},
-                            )
-
-                            # Record price update metric
-                            if hasattr(player, "tier") and player.tier:
-                                PrometheusMetrics.record_price_update(player.tier.tier)
-
-                            # Track ALL auctions expiring before next scan
+                            # Track ALL auctions
                             for auction in buyable_auctions:
                                 if auction.expires:
                                     expires_at = timezone.now() + timedelta(seconds=auction.expires)
+                                    created = await sync_to_async(
+                                        lambda: TradeWatch.objects.get_or_create(
+                                            trade_id=str(auction.trade_id),
+                                            defaults={
+                                                "player": player,
+                                                "listed_price": Decimal(auction.buy_now_price),
+                                                "expires_at": expires_at,
+                                                "discovered_at": timezone.now(),
+                                            },
+                                        )[1]
+                                    )()
 
-                                    # Track auction if it expires before next scan
-                                    if expires_at < next_scan:
-                                        created = await sync_to_async(
-                                            lambda: TradeWatch.objects.get_or_create(
-                                                trade_id=str(auction.trade_id),
-                                                defaults={
-                                                    "player": player,
-                                                    "listed_price": Decimal(auction.buy_now_price),
-                                                    "expires_at": expires_at,
-                                                    "discovered_at": timezone.now(),
-                                                },
-                                            )[1]
-                                        )()
-
-                                        if created:
-                                            trades_collected += 1
+                                    if created:
+                                        trades_collected += 1
 
                             # Note: PlayerPriceHistory only records verified sold trades
                             # Unverified scraping data is tracked via TradeWatch and current PlayerPrice
@@ -554,9 +545,9 @@ def verify_pending_trades(self, batch_size: int = 60):
 
                                 # Update current_price with verified sold price
                                 try:
-                                    await sync_to_async(PlayerPrice.objects.filter(player_id=trade.player_id).update)(
-                                        current_price=trade.listed_price, last_updated=timezone.now()
-                                    )
+                                    await sync_to_async(
+                                        PlayerPrice.objects.update_or_create(player_id=trade.player_id)
+                                    )(current_price=trade.listed_price, last_updated=timezone.now())
 
                                     # Record price update metric
                                     if hasattr(trade.player, "tier") and trade.player.tier:

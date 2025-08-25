@@ -22,10 +22,12 @@ def update_metrics():
             # Update quality metrics
             await QualityMetrics.update_freshness_metrics()
             await QualityMetrics.update_verification_metrics()
+            await QualityMetrics.update_tier_metrics()
 
             # Update system metrics
             await SystemMetrics.update_celery_metrics()
             await SystemMetrics.update_session_metrics()
+            await SystemMetrics.update_database_metrics()
 
             logger.info("Metrics update completed successfully")
             return "Metrics update complete"

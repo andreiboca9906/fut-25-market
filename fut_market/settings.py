@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-14x_8$l92&ylccm@#1u50@%t8a9d*gu=*f35p@-go2o#!sux)t
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "host.docker.internal", "0.0.0.0"]
 
 
 # Application definition
@@ -220,7 +220,11 @@ class TierRouter:
             return {"queue": f"tier_{tier}"}
         elif task == "players.tasks.verify_pending_trades":
             return {"queue": "verification"}
-        elif task in ["players.tasks.recalculate_player_tiers", "players.tasks.cleanup_expired_trades"]:
+        elif task in [
+            "players.tasks.recalculate_player_tiers",
+            "players.tasks.cleanup_expired_trades",
+            "players.metrics_tasks.update_metrics",
+        ]:
             return {"queue": "maintenance"}
         return None
 

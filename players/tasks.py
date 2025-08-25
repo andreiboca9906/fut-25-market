@@ -228,7 +228,6 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
 
     # Increment active tasks
     PrometheusMetrics.increment_active_scrapers(tier)
-    task_start_time = time.time()
 
     async def _run():
         priority_queue = TierBasedPriorityQueue()
@@ -319,6 +318,8 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                         except Exception as e:
                             await breaker.record_failure(e)
                             raise
+                        finally:
+                            request_end = time.time()
 
                         if res.auctions:
                             all_auctions.extend(res.auctions)
@@ -395,9 +396,8 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                             success_count += 1
 
                             # Record success metrics
-                            request_time = time.time() - task_start_time
                             PrometheusMetrics.record_request(
-                                tier=tier, response_time=request_time, success=True, session_id=sid
+                                tier=tier, response_time=request_end - request_start, success=True, session_id=sid
                             )
 
                             logger.debug(
@@ -418,6 +418,12 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                     # Record rate limit hit
                     RiskMetrics.record_rate_limit(session_id=sid)
 
+                    # Record failed request metric
+                    if "request_start" in locals():
+                        PrometheusMetrics.record_request(
+                            tier=tier, response_time=time.time() - request_start, success=False, session_id=sid
+                        )
+
                     # Back off for this tier
                     await asyncio.sleep(human_delay(10, variance=0.3))
 
@@ -429,6 +435,12 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                     await ErrorTracker.log_error(
                         ErrorTracker.categorize_error(e), e, {"tier": tier, "player_id": player_id}
                     )
+
+                    # Record failed request metric
+                    if "request_start" in locals():
+                        PrometheusMetrics.record_request(
+                            tier=tier, response_time=time.time() - request_start, success=False, session_id=sid
+                        )
 
                     logger.error(
                         f"Error scraping player in {tier} tier",

@@ -1,3 +1,5 @@
+import os
+from datetime import timedelta
 from typing import Any, Dict
 
 import redis
@@ -8,64 +10,71 @@ from django.db import connection
 from django.db.models import Avg, Count, F, Q
 from django.http import HttpResponse
 from django.utils import timezone
-from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, generate_latest
+from prometheus_client import REGISTRY, Counter, Gauge, Histogram, generate_latest
 
 from players.models import PlayerPrice, TradeWatch
+from utils.prometheus_multiprocess import generate_metrics
 
-# Create custom registry for scraper metrics
-registry = CollectorRegistry()
+# Check if we're in multiprocess mode (Celery workers)
+multiprocess_mode = os.environ.get("PROMETHEUS_MULTIPROC_DIR") is not None
+
+# Use default registry for metrics (works with multiprocess mode)
+# Don't specify registry parameter - let prometheus_client handle it
 
 # Performance Metrics
 request_counter = Counter(
-    "scraper_requests_total", "Total number of scraper requests", ["tier", "status", "session_id"], registry=registry
+    "fc25_scraper_requests_total", "Total number of scraper requests", ["tier", "status", "session_id"]
 )
 
 response_time_histogram = Histogram(
-    "scraper_response_time_seconds",
+    "fc25_scraper_response_time_seconds",
     "Response time in seconds",
     ["tier"],
     buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
-    registry=registry,
 )
 
-active_scrapers = Gauge("scraper_active_tasks", "Number of active scraper tasks", ["tier"], registry=registry)
+active_scrapers = Gauge("fc25_scraper_active_tasks", "Number of active scraper tasks", ["tier"])
 
 # Risk & Error Metrics
-rate_limit_counter = Counter("scraper_rate_limits_total", "Total rate limit hits", ["session_id"], registry=registry)
+rate_limit_counter = Counter("fc25_scraper_rate_limits_total", "Total rate limit hits", ["session_id"])
 
 session_expiration_counter = Counter(
-    "scraper_session_expirations_total", "Total session expirations", ["session_id"], registry=registry
+    "fc25_scraper_session_expirations_total", "Total session expirations", ["session_id"]
 )
 
-error_counter = Counter(
-    "scraper_errors_total", "Total scraper errors", ["tier", "error_type", "session_id"], registry=registry
-)
+error_counter = Counter("fc25_scraper_errors_total", "Total scraper errors", ["tier", "error_type", "session_id"])
 
-circuit_breaker_gauge = Gauge(
-    "scraper_circuit_breaker_status", "Circuit breaker status (0=closed, 1=open)", ["tier"], registry=registry
-)
+circuit_breaker_gauge = Gauge("fc25_circuit_breaker_status", "Circuit breaker status (0=closed, 1=open)", ["tier"])
 
 # Data Quality Metrics
-price_freshness_gauge = Gauge(
-    "scraper_price_freshness_minutes", "Average price age in minutes", ["tier"], registry=registry
-)
+price_freshness_gauge = Gauge("fc25_price_freshness_minutes", "Average price age in minutes", ["tier"])
 
-verified_trades_gauge = Gauge("scraper_verified_trades_ratio", "Ratio of verified to total trades", registry=registry)
+verified_trades_gauge = Gauge("fc25_verified_trades_ratio", "Ratio of verified to total trades")
 
-missing_prices_gauge = Gauge("scraper_missing_prices_count", "Number of players without prices", registry=registry)
+missing_prices_gauge = Gauge("fc25_missing_prices_count", "Number of players without prices")
 
-stale_prices_gauge = Gauge(
-    "scraper_stale_prices_count", "Number of prices older than 2 hours", ["tier"], registry=registry
-)
+stale_prices_gauge = Gauge("fc25_stale_prices_count", "Number of prices older than 2 hours", ["tier"])
 
 # System Health Metrics
-active_sessions_gauge = Gauge("scraper_active_sessions", "Number of active EA sessions", registry=registry)
+active_sessions_gauge = Gauge("fc25_active_ea_sessions", "Number of active EA sessions")
 
-queue_depth_gauge = Gauge("scraper_queue_depth", "Number of tasks in queue", ["queue_name"], registry=registry)
+queue_depth_gauge = Gauge("fc25_queue_depth", "Number of tasks in queue", ["queue_name"])
 
-worker_utilization_gauge = Gauge(
-    "scraper_worker_utilization", "Worker utilization percentage", ["worker_name"], registry=registry
-)
+worker_utilization_gauge = Gauge("fc25_worker_utilization", "Worker utilization percentage", ["worker_name"])
+
+# Additional useful metrics
+db_pool_gauge = Gauge("fc25_db_pool_active", "Active database connections")
+
+pending_trades_gauge = Gauge("fc25_pending_trades", "Number of pending trades")
+
+tier_player_count_gauge = Gauge("fc25_tier_player_count", "Number of players per tier", ["tier"])
+
+price_updates_counter = Counter("fc25_price_updates_total", "Total price updates", ["tier"])
+
+# Session pool metrics
+session_pool_size_gauge = Gauge("fc25_session_pool_size", "Total session pool size")
+
+session_pool_healthy_gauge = Gauge("fc25_session_pool_healthy", "Number of healthy sessions")
 
 
 class PrometheusMetrics:
@@ -90,6 +99,11 @@ class PrometheusMetrics:
     def decrement_active_scrapers(tier: str):
         """Decrement active scraper count"""
         active_scrapers.labels(tier=tier).dec()
+
+    @staticmethod
+    def record_price_update(tier: str):
+        """Record a price update"""
+        price_updates_counter.labels(tier=tier).inc()
 
 
 class RiskMetrics:
@@ -123,7 +137,7 @@ class QualityMetrics:
         for tier in tiers:
             # Calculate average age for each tier
             avg_age_result = await sync_to_async(
-                lambda: PlayerPrice.objects.filter(player__playertier__tier=tier).aggregate(
+                lambda: PlayerPrice.objects.filter(player__tier__tier=tier).aggregate(
                     avg_age=Avg(timezone.now() - F("last_updated"))
                 )
             )()
@@ -136,14 +150,14 @@ class QualityMetrics:
             # Count stale prices
             stale_count = await sync_to_async(
                 lambda: PlayerPrice.objects.filter(
-                    player__playertier__tier=tier, last_updated__lt=timezone.now() - timezone.timedelta(hours=2)
+                    player__tier__tier=tier, last_updated__lt=timezone.now() - timedelta(hours=2)
                 ).count()
             )()
             stale_prices_gauge.labels(tier=tier).set(stale_count)
 
         # Count missing prices
         missing_count = await sync_to_async(
-            lambda: PlayerPrice.objects.filter(Q(current_low_price__isnull=True) | Q(current_low_price=0)).count()
+            lambda: PlayerPrice.objects.filter(Q(current_price__isnull=True) | Q(current_price=0)).count()
         )()
         missing_prices_gauge.set(missing_count)
 
@@ -158,6 +172,19 @@ class QualityMetrics:
             ratio = stats["sold"] / stats["total"]
             verified_trades_gauge.set(ratio)
 
+        # Also update pending trades
+        pending_count = await sync_to_async(lambda: TradeWatch.objects.filter(status="pending").count())()
+        pending_trades_gauge.set(pending_count)
+
+    @staticmethod
+    async def update_tier_metrics():
+        """Update tier-based player counts"""
+        tiers = ["HOT", "TRENDING", "ACTIVE", "NORMAL", "COLD"]
+
+        for tier in tiers:
+            count = await sync_to_async(lambda: PlayerPrice.objects.filter(player__tier__tier=tier).count())()
+            tier_player_count_gauge.labels(tier=tier).set(count)
+
 
 class SystemMetrics:
     @staticmethod
@@ -168,7 +195,7 @@ class SystemMetrics:
 
         # Queue depth metrics
         for tier in ["hot", "trending", "active", "normal", "cold"]:
-            queue_name = f"scraper_{tier}"
+            queue_name = f"tier_{tier}"
             depth = r.llen(f"celery:queue:{queue_name}")
             queue_depth_gauge.labels(queue_name=queue_name).set(depth)
 
@@ -182,11 +209,33 @@ class SystemMetrics:
     @staticmethod
     async def update_session_metrics():
         """Update EA session metrics"""
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM ea_accounts WHERE is_expired = FALSE")
-            active_count = cursor.fetchone()[0]
+
+        def get_session_counts():
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT COUNT(*) FROM ea_accounts WHERE is_expired = FALSE")
+                active_count = cursor.fetchone()[0]
+
+                cursor.execute("SELECT COUNT(*) FROM ea_accounts")
+                total_count = cursor.fetchone()[0]
+            return active_count, total_count
+
+        active_count, total_count = await sync_to_async(get_session_counts)()
 
         active_sessions_gauge.set(active_count)
+        session_pool_size_gauge.set(total_count)
+        session_pool_healthy_gauge.set(active_count)
+
+    @staticmethod
+    async def update_database_metrics():
+        """Update database connection metrics"""
+
+        def get_active_connections():
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT count(*) FROM pg_stat_activity WHERE state = 'active'")
+                return cursor.fetchone()[0]
+
+        active_connections = await sync_to_async(get_active_connections)()
+        db_pool_gauge.set(active_connections)
 
     @staticmethod
     def increment_active_tasks(tier: str):
@@ -200,9 +249,20 @@ class SystemMetrics:
 
 
 # Django view to expose metrics
+from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
+
+
+@csrf_exempt
+@never_cache
 def metrics_view(request):
     """Prometheus metrics endpoint"""
-    return HttpResponse(generate_latest(registry), content_type="text/plain")
+    if multiprocess_mode:
+        # Use multiprocess aggregation
+        return HttpResponse(generate_metrics(), content_type="text/plain")
+    else:
+        # Single process mode (development without Celery)
+        return HttpResponse(generate_latest(REGISTRY), content_type="text/plain")
 
 
 # Metrics collector for aggregating metrics
@@ -256,7 +316,7 @@ class MetricsCollector:
             error_rate = 0.0
 
         # Cache aggregated metrics
-        self.redis.hset(
+        await self.redis.hset(
             metrics_key,
             mapping={
                 "success_rate": success_rate,
@@ -268,7 +328,7 @@ class MetricsCollector:
         )
 
         # Expire after 5 minutes
-        self.redis.expire(metrics_key, 300)
+        await self.redis.expire(metrics_key, 300)
 
 
 # Risk monitor for adaptive behavior

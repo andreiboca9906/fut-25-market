@@ -7,6 +7,3 @@ if [ -f .env.local ]; then
 else
     echo "⚠ .env.local file not found, using default settings"
 fi
-
-# Execute the command passed as arguments
-exec "$@"

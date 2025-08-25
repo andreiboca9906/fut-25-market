@@ -164,26 +164,32 @@ The session ID can be obtained through the login process or external authenticat
 # Start Redis
 docker-compose up -d redis
 
+# IMPORTANT: Set up Prometheus multiprocess directory for metrics
+export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
+mkdir -p $PROMETHEUS_MULTIPROC_DIR
+rm -f $PROMETHEUS_MULTIPROC_DIR/*.db  # Clean up old metrics
+
 # Run all workers (separate terminals for each)
+# Use the start-celery-worker.sh script for proper metrics support
 # Tier-based price scraping workers
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_hot -n worker.hot
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_trending -n worker.trending
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_active -n worker.active
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_normal -n worker.normal
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_cold -n worker.cold
+./scripts/start-celery-worker.sh -l info -Q tier_hot -n worker.hot
+./scripts/start-celery-worker.sh -l info -Q tier_trending -n worker.trending
+./scripts/start-celery-worker.sh -l info -Q tier_active -n worker.active
+./scripts/start-celery-worker.sh -l info -Q tier_normal -n worker.normal
+./scripts/start-celery-worker.sh -l info -Q tier_cold -n worker.cold
 
 # Verification and maintenance workers
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q verification -n worker.verification
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q maintenance -n worker.maintenance
+./scripts/start-celery-worker.sh -l info -Q verification -n worker.verification
+./scripts/start-celery-worker.sh -l info -Q maintenance -n worker.maintenance
 
 # Or run a single worker for all queues (simpler for testing)
-./scripts/load-env.sh uv run celery -A fut_market worker -l info -Q tier_hot,tier_trending,tier_active,tier_normal,tier_cold,verification,maintenance
+./scripts/start-celery-worker.sh -l info -Q tier_hot,tier_trending,tier_active,tier_normal,tier_cold,verification,maintenance
 
 # Run scheduler (separate terminal)
-./scripts/load-env.sh uv run celery -A fut_market beat -l info
+source ./scripts/load-env.sh && uv run celery -A fut_market beat -l info
 
-# Test with limited players (TEST_MODE)
-./scripts/load-env.sh env TEST_MODE=true uv run celery -A fut_market worker -l info -Q tier_hot,tier_trending,tier_active,tier_normal,tier_cold,verification,maintenance
+# Run django server (separate terminal)
+./start-django-dev.sh
 ```
 
 ### Queue Schedule

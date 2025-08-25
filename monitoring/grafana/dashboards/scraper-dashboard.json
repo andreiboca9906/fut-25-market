@@ -6,186 +6,559 @@
   "schemaVersion": 38,
   "version": 1,
   "panels": [
-      {
-        "id": 1,
-        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
-        "title": "Request Rate by Tier",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "rate(scraper_requests_total[5m])",
-            "legendFormat": "{{tier}} - {{status}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short", "logBase": 1, "show": true},
-          {"format": "short", "logBase": 1, "show": true}
-        ],
-        "xaxis": {"show": true}
-      },
-      {
-        "id": 2,
-        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
-        "title": "Response Time P95",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "histogram_quantile(0.95, rate(scraper_response_time_seconds_bucket[5m]))",
-            "legendFormat": "{{tier}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "s", "logBase": 1, "show": true},
-          {"format": "short", "logBase": 1, "show": true}
-        ],
-        "xaxis": {"show": true}
-      },
-      {
-        "id": 3,
-        "gridPos": {"x": 0, "y": 8, "w": 6, "h": 4},
-        "title": "Active Scrapers",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "sum(scraper_active_tasks)",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "graphMode": "area",
-          "orientation": "auto",
-          "textMode": "auto",
-          "colorMode": "value",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
-          }
+    {
+      "id": 1,
+      "gridPos": {"x": 0, "y": 0, "w": 8, "h": 8},
+      "title": "Request Rate by Tier",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(fc25_scraper_requests_total[5m])",
+          "legendFormat": "{{tier}} - {{status}}",
+          "refId": "A"
         }
-      },
-      {
-        "id": 4,
-        "gridPos": {"x": 6, "y": 8, "w": 6, "h": 4},
-        "title": "Rate Limit Hits (1h)",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "increase(scraper_rate_limits_total[1h])",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "graphMode": "area",
-          "orientation": "auto",
-          "textMode": "auto",
-          "colorMode": "value",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
-          }
-        }
-      },
-      {
-        "id": 5,
-        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
-        "title": "Error Rate",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "rate(scraper_errors_total[5m])",
-            "legendFormat": "{{tier}} - {{error_type}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short", "logBase": 1, "show": true},
-          {"format": "short", "logBase": 1, "show": true}
-        ],
-        "xaxis": {"show": true}
-      },
-      {
-        "id": 6,
-        "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
-        "title": "Price Freshness (minutes)",
-        "type": "gauge",
-        "targets": [
-          {
-            "expr": "scraper_price_freshness_minutes",
-            "legendFormat": "{{tier}}",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "showThresholdLabels": false,
-          "showThresholdMarkers": true
+      ],
+      "yaxes": [
+        {"format": "short", "logBase": 1, "show": true},
+        {"format": "short", "logBase": 1, "show": true}
+      ],
+      "xaxis": {"show": true}
+    },
+    {
+      "id": 2,
+      "gridPos": {"x": 8, "y": 0, "w": 8, "h": 8},
+      "title": "Response Time Percentiles",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(fc25_scraper_response_time_seconds_bucket[5m]))",
+          "legendFormat": "P95 - {{tier}}",
+          "refId": "A"
         },
-        "fieldConfig": {
-          "defaults": {
-            "max": 180,
-            "min": 0,
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {"color": "green", "value": null},
-                {"color": "yellow", "value": 60},
-                {"color": "red", "value": 120}
-              ]
-            },
-            "unit": "m"
-          }
+        {
+          "expr": "histogram_quantile(0.99, rate(fc25_scraper_response_time_seconds_bucket[5m]))",
+          "legendFormat": "P99 - {{tier}}",
+          "refId": "B"
+        }
+      ],
+      "yaxes": [
+        {"format": "s", "logBase": 1, "show": true},
+        {"format": "short", "logBase": 1, "show": true}
+      ],
+      "xaxis": {"show": true}
+    },
+    {
+      "id": 3,
+      "gridPos": {"x": 16, "y": 0, "w": 8, "h": 8},
+      "title": "Success Rate by Tier",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(fc25_scraper_requests_total{status=\"success\"}[5m]) / (rate(fc25_scraper_requests_total{status=\"success\"}[5m]) + rate(fc25_scraper_requests_total{status=\"failure\"}[5m])) * 100",
+          "legendFormat": "{{tier}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {"format": "percent", "logBase": 1, "show": true, "min": 0, "max": 100},
+        {"format": "short", "logBase": 1, "show": true}
+      ],
+      "xaxis": {"show": true}
+    },
+    {
+      "id": 4,
+      "gridPos": {"x": 0, "y": 8, "w": 4, "h": 4},
+      "title": "Active Scrapers",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(fc25_scraper_active_tasks)",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      }
+    },
+    {
+      "id": 5,
+      "gridPos": {"x": 4, "y": 8, "w": 4, "h": 4},
+      "title": "Active EA Sessions",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "fc25_active_ea_sessions",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
         }
       },
-      {
-        "id": 7,
-        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
-        "title": "Queue Depth",
-        "type": "graph",
-        "targets": [
-          {
-            "expr": "scraper_queue_depth",
-            "legendFormat": "{{queue_name}}",
-            "refId": "A"
-          }
-        ],
-        "yaxes": [
-          {"format": "short", "logBase": 1, "show": true},
-          {"format": "short", "logBase": 1, "show": true}
-        ],
-        "xaxis": {"show": true}
-      },
-      {
-        "id": 8,
-        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
-        "title": "Circuit Breaker Status",
-        "type": "stat",
-        "targets": [
-          {
-            "expr": "scraper_circuit_breaker_status",
-            "legendFormat": "{{tier}}",
-            "refId": "A"
-          }
-        ],
-        "options": {
-          "graphMode": "none",
-          "orientation": "auto",
-          "textMode": "name",
-          "colorMode": "background",
-          "reduceOptions": {
-            "values": false,
-            "calcs": ["lastNotNull"]
-          }
-        },
-        "fieldConfig": {
-          "defaults": {
-            "mappings": [
-              {"options": {"0": {"text": "Closed", "color": "green"}}, "type": "value"},
-              {"options": {"1": {"text": "Open", "color": "red"}}, "type": "value"}
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 5},
+              {"color": "green", "value": 10}
             ]
           }
         }
       }
-    ],
+    },
+    {
+      "id": 6,
+      "gridPos": {"x": 8, "y": 8, "w": 4, "h": 4},
+      "title": "Session Pool Health",
+      "type": "gauge",
+      "targets": [
+        {
+          "expr": "(fc25_session_pool_healthy / fc25_session_pool_size) * 100",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "green", "value": 80}
+            ]
+          },
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "gridPos": {"x": 12, "y": 8, "w": 4, "h": 4},
+      "title": "Rate Limit Hits (1h)",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "sum(increase(fc25_scraper_rate_limits_total[1h]))",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 10},
+              {"color": "red", "value": 50}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 8,
+      "gridPos": {"x": 16, "y": 8, "w": 4, "h": 4},
+      "title": "DB Connections",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "fc25_db_pool_active",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      }
+    },
+    {
+      "id": 9,
+      "gridPos": {"x": 20, "y": 8, "w": 4, "h": 4},
+      "title": "Pending Trades",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "fc25_pending_trades",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      }
+    },
+    {
+      "id": 10,
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "title": "Error Rate by Type",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(fc25_scraper_errors_total[5m])",
+          "legendFormat": "{{tier}} - {{error_type}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {"format": "short", "logBase": 1, "show": true},
+        {"format": "short", "logBase": 1, "show": true}
+      ],
+      "xaxis": {"show": true}
+    },
+    {
+      "id": 11,
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "title": "Queue Depth by Tier",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "fc25_queue_depth",
+          "legendFormat": "{{queue_name}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {"format": "short", "logBase": 1, "show": true},
+        {"format": "short", "logBase": 1, "show": true}
+      ],
+      "xaxis": {"show": true}
+    },
+    {
+      "id": 12,
+      "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8},
+      "title": "Price Freshness by Tier (minutes)",
+      "type": "heatmap",
+      "targets": [
+        {
+          "expr": "fc25_price_freshness_minutes",
+          "format": "time_series",
+          "refId": "A"
+        }
+      ],
+      "dataFormat": "timeseries",
+      "options": {
+        "calculate": false,
+        "cellGap": 2,
+        "cellValues": {},
+        "color": {
+          "scheme": "Oranges",
+          "steps": 128,
+          "reverse": false,
+          "min": 0,
+          "max": null
+        },
+        "exemplars": {
+          "color": "rgba(255,0,255,0.7)"
+        },
+        "filterValues": {
+          "le": 1e-9
+        },
+        "rowsFrame": {
+          "layout": "auto"
+        },
+        "yAxis": {
+          "reverse": false
+        }
+      }
+    },
+    {
+      "id": 13,
+      "gridPos": {"x": 12, "y": 20, "w": 12, "h": 8},
+      "title": "Circuit Breaker Status",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "fc25_circuit_breaker_status",
+          "legendFormat": "{{tier}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "graphMode": "none",
+        "orientation": "auto",
+        "textMode": "name",
+        "colorMode": "background",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {"options": {"0": {"text": "Closed ✓", "color": "green"}}, "type": "value"},
+            {"options": {"1": {"text": "Open ✗", "color": "red"}}, "type": "value"}
+          ]
+        }
+      }
+    },
+    {
+      "id": 14,
+      "gridPos": {"x": 0, "y": 28, "w": 8, "h": 6},
+      "title": "Stale Prices by Tier",
+      "type": "bargauge",
+      "targets": [
+        {
+          "expr": "fc25_stale_prices_count",
+          "legendFormat": "{{tier}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 100},
+              {"color": "red", "value": 500}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 15,
+      "gridPos": {"x": 8, "y": 28, "w": 8, "h": 6},
+      "title": "Players per Tier",
+      "type": "piechart",
+      "targets": [
+        {
+          "expr": "fc25_tier_player_count",
+          "legendFormat": "{{tier}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "pieType": "donut",
+        "legendDisplayMode": "list",
+        "legendPlacement": "right",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      }
+    },
+    {
+      "id": 16,
+      "gridPos": {"x": 16, "y": 28, "w": 8, "h": 6},
+      "title": "Worker Utilization",
+      "type": "bargauge",
+      "targets": [
+        {
+          "expr": "fc25_worker_utilization",
+          "legendFormat": "{{worker_name}}",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "displayMode": "lcd",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 0,
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 70},
+              {"color": "red", "value": 90}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 17,
+      "gridPos": {"x": 0, "y": 34, "w": 12, "h": 6},
+      "title": "Missing Prices Count",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "fc25_missing_prices_count",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "graphMode": "area",
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"]
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 1000},
+              {"color": "red", "value": 5000}
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 18,
+      "gridPos": {"x": 12, "y": 34, "w": 12, "h": 6},
+      "title": "Trade Verification Ratio",
+      "type": "gauge",
+      "targets": [
+        {
+          "expr": "fc25_verified_trades_ratio * 100",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "red", "value": null},
+              {"color": "yellow", "value": 50},
+              {"color": "green", "value": 80}
+            ]
+          },
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 19,
+      "gridPos": {"x": 0, "y": 40, "w": 24, "h": 8},
+      "title": "Price Updates Over Time",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(fc25_price_updates_total[5m])",
+          "legendFormat": "{{tier}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {"format": "short", "logBase": 1, "show": true},
+        {"format": "short", "logBase": 1, "show": true}
+      ],
+      "xaxis": {"show": true}
+    },
+    {
+      "id": 20,
+      "gridPos": {"x": 0, "y": 48, "w": 12, "h": 6},
+      "title": "Session Expiration Rate",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "rate(fc25_scraper_session_expirations_total[5m])",
+          "legendFormat": "{{session_id}}",
+          "refId": "A"
+        }
+      ],
+      "yaxes": [
+        {"format": "short", "logBase": 1, "show": true},
+        {"format": "short", "logBase": 1, "show": true}
+      ],
+      "xaxis": {"show": true}
+    },
+    {
+      "id": 21,
+      "gridPos": {"x": 12, "y": 48, "w": 12, "h": 6},
+      "title": "Database Connection Pool",
+      "type": "gauge",
+      "targets": [
+        {
+          "expr": "fc25_db_pool_active",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "max": 50,
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {"color": "green", "value": null},
+              {"color": "yellow", "value": 30},
+              {"color": "red", "value": 45}
+            ]
+          },
+          "unit": "short"
+        }
+      }
+    }
+  ],
   "refresh": "10s",
   "time": {
     "from": "now-6h",

@@ -431,7 +431,34 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                                         },
                                     )
                             else:
-                                failure_count += 1
+                                # No auctions found - still need to mark as scraped to avoid repeated attempts
+                                await sync_to_async(
+                                    lambda: PlayerPrice.objects.update_or_create(
+                                        player_id=player_id,
+                                        platform=platform,
+                                        defaults={
+                                            "current_price": 0,  # No market data available
+                                            "last_updated": timezone.now(),
+                                        },
+                                    )
+                                )()
+                                success_count += 1
+
+                                # Record success metrics (same as auction-found case)
+                                PrometheusMetrics.record_request(
+                                    tier=tier,
+                                    response_time=request_end - request_start,
+                                    success=True,
+                                    session_id=sid,
+                                )
+
+                                logger.debug(
+                                    "No auctions found, marked as scraped",
+                                    extra={
+                                        "tier": tier,
+                                        "player_id": player_id,
+                                    },
+                                )
 
                         except RateLimitError as e:
                             logger.warning(f"Rate limit hit while scraping {tier} tier", extra={"tier": tier})

@@ -217,10 +217,10 @@ class QualityMetrics:
                 lambda: Player.objects.filter(rating__gte=min_rating, rating__lte=max_rating).count()
             )()
 
-            # Count players in this rating range that HAVE PlayerPrice records
+            # Count players in this rating range that HAVE PlayerPrice records with valid prices (> 0)
             players_with_prices = await sync_to_async(
                 lambda: Player.objects.filter(rating__gte=min_rating, rating__lte=max_rating)
-                .filter(id__in=PlayerPrice.objects.values_list("player_id", flat=True))
+                .filter(id__in=PlayerPrice.objects.filter(current_price__gt=0).values_list("player_id", flat=True))
                 .count()
             )()
 
@@ -363,7 +363,7 @@ class MetricsCollector:
             error_rate = 0.0
 
         # Cache aggregated metrics
-        await self.redis.hset(
+        self.redis.hset(
             metrics_key,
             mapping={
                 "success_rate": success_rate,
@@ -375,7 +375,7 @@ class MetricsCollector:
         )
 
         # Expire after 5 minutes
-        await self.redis.expire(metrics_key, 300)
+        self.redis.expire(metrics_key, 300)
 
 
 # Risk monitor for adaptive behavior

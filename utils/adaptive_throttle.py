@@ -11,7 +11,13 @@ from utils.metrics import MetricsCollector, RiskMonitor
 class AdaptiveThrottler:
     def __init__(self):
         self.redis = redis.Redis.from_url(settings.CELERY_BROKER_URL)
-        self.base_delays = {"HOT": 1.5, "TRENDING": 2.0, "ACTIVE": 3.0, "NORMAL": 4.0, "COLD": 6.0}
+        self.base_delays = {
+            "HOT": 1.5,
+            "TRENDING": 2.0,
+            "ACTIVE": 3.0,
+            "NORMAL": 4.0,
+            "COLD": 1.5,
+        }  # Cold was previously 6.0
         self.adjustment_factor = 1.0
 
     async def get_adjusted_delay(self, tier: str) -> float:
@@ -22,7 +28,7 @@ class AdaptiveThrottler:
 
     async def get_adjustment_factor(self) -> float:
         """Calculate adjustment based on recent metrics"""
-        metrics = await MetricsCollector().get_performance_metrics("all", 60)
+        metrics = await MetricsCollector().get_performance_metrics("all", 10)  # previous 60
         risk = await RiskMonitor().get_risk_score()
 
         if risk > 70:

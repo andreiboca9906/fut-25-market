@@ -3,8 +3,8 @@
 ## Rate Limits & Timeouts Configuration
 
 ### Base Configuration
-- **EA API limit**: 50 requests/minute per session (BASE_RATE_LIMIT)
-- **All limits are cross-related** - change BASE_RATE_LIMIT in `utils/rate_limit_config.py` and all adjust automatically
+- **EA API limit**: ~50 requests/minute per session (actual limits managed by AdaptiveThrottler)
+- **Dynamic Rate Limiting**: AdaptiveThrottler adjusts delays in real-time based on performance metrics
 
 ### HTTP Request Timeouts
 - **Current**: 30 seconds timeout (httpx)

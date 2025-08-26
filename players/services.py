@@ -9,7 +9,7 @@ from typing import Dict, List, Optional
 import httpx
 from asgiref.sync import sync_to_async
 from django.db import transaction
-from django.db.models import Avg, Count, Max, Min, StdDev
+from django.db.models import Avg, Count, F, Max, Min, StdDev
 from django.utils import timezone
 
 from core.constants import TIER_SCAN_WINDOWS
@@ -442,7 +442,10 @@ class TierBasedPriorityQueue:
         query = PlayerTier.objects.filter(tier=tier).select_related("player")
 
         # Join with PlayerPrice to get last scraped time
-        query = query.annotate(last_scraped=Max("player__prices__last_updated")).order_by("last_scraped")
+        # Use nulls_first=True to prioritize never-scraped players
+        query = query.annotate(last_scraped=Max("player__prices__last_updated")).order_by(
+            F("last_scraped").asc(nulls_first=True)
+        )
 
         if limit:
             query = query[:limit]

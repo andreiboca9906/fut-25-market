@@ -1,6 +1,5 @@
 import random
 from datetime import datetime
-from typing import Any, Dict
 
 import redis
 from django.conf import settings
@@ -59,37 +58,3 @@ class AdaptiveThrottler:
             return int(base_sizes[tier] * 1.2)
 
         return base_sizes[tier]
-
-
-class CooldownManager:
-    def __init__(self):
-        self.redis = redis.Redis.from_url(settings.CELERY_BROKER_URL)
-
-    async def get_session_metrics(self, session_id: str) -> Dict[str, Any]:
-        """Get metrics for a specific session"""
-        # This would aggregate session-specific metrics
-        # For now, return mock data
-        return {"error_rate": 0.05, "consecutive_successes": 50, "requests_last_hour": 200, "consecutive_requests": 30}
-
-    async def get_cooldown_duration(self, session_id: str) -> int:
-        """Calculate dynamic cooldown based on session health"""
-        session_metrics = await self.get_session_metrics(session_id)
-
-        base_cooldown = 900  # 15 minutes
-
-        if session_metrics["error_rate"] > 0.1:
-            # High error rate - extend cooldown
-            return base_cooldown * 2
-        elif session_metrics["consecutive_successes"] > 100:
-            # Performing well - reduce cooldown
-            return base_cooldown // 2
-
-        return base_cooldown
-
-    async def should_cooldown(self, session_id: str) -> bool:
-        """Check if session needs cooldown"""
-        metrics = await self.get_session_metrics(session_id)
-
-        return (
-            metrics["requests_last_hour"] > 400 or metrics["consecutive_requests"] > 80 or metrics["error_rate"] > 0.15
-        )

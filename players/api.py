@@ -9,7 +9,7 @@ from django.db import transaction
 from ninja import Router
 from ninja.errors import HttpError
 
-from players.models import Player, PlayerPrice, PlayerPriceHistory, PriceScrapeJob
+from players.models import Player, PlayerPrice, PlayerPriceHistory
 from players.services import PlayerDataService
 
 logger = logging.getLogger(__name__)
@@ -191,9 +191,6 @@ async def get_player_price_series(request, player_id: int, platform: str = "ps",
 async def get_price_stats(request):
     """Get price statistics and scraping health."""
     try:
-        # Recent job summary
-        recent_job = await sync_to_async(lambda: PriceScrapeJob.objects.order_by("-started_at").first())()
-
         # Stale prices count (older than 1 hour)
         one_hour_ago = datetime.now() - timedelta(hours=1)
         stale_count = await sync_to_async(lambda: PlayerPrice.objects.filter(last_updated__lt=one_hour_ago).count())()
@@ -205,33 +202,8 @@ async def get_price_stats(request):
             "success": True,
             "total_prices_tracked": total_prices,
             "stale_prices": stale_count,
-            "last_job": {
-                "id": recent_job.id,
-                "status": recent_job.status,
-                "started_at": recent_job.started_at.isoformat(),
-                "ended_at": recent_job.ended_at.isoformat() if recent_job.ended_at else None,
-                "success_count": recent_job.success_count,
-                "failure_count": recent_job.failure_count,
-                "total_targets": recent_job.total_targets,
-                "rate_limit_hits": recent_job.rate_limit_hits,
-            }
-            if recent_job
-            else None,
         }
 
     except Exception as e:
         logger.error(f"Error getting price stats: {e}")
-        raise HttpError(500, f"An error occurred: {str(e)}")
-
-
-@router.get("/scrape-jobs")
-async def get_scrape_jobs(request, limit: int = 10):
-    """Get recent scrape job runs."""
-    try:
-        jobs = await sync_to_async(lambda: list(PriceScrapeJob.objects.order_by("-started_at")[:limit].values()))()
-
-        return {"success": True, "jobs": jobs}
-
-    except Exception as e:
-        logger.error(f"Error getting scrape jobs: {e}")
         raise HttpError(500, f"An error occurred: {str(e)}")

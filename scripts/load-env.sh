@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # Load local environment variables
-if [ -f .env.local ]; then
-    export $(cat .env.local | xargs)
-    echo "✓ Loaded environment variables from .env.local"
+if [ -f .env ]; then
+    export "$(xargs < .env)"
+    echo "✓ Loaded environment variables from .env file"
 else
-    echo "⚠ .env.local file not found, using default settings"
+    echo "⚠ .env file not found, using default settings"
 fi

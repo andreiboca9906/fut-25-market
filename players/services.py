@@ -246,7 +246,7 @@ class CardHotnessCalculator:
         )()
 
         # Normalize to 0-100 scale (assuming 50+ trades/day is very high)
-        return min(trade_count * 2, 100.0)
+        return min(float(trade_count * 2), 100.0)
 
     async def _calculate_trend(self, player_id: int) -> float:
         """Calculate price trend (sharp increases/decreases)."""

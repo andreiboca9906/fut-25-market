@@ -246,42 +246,6 @@ class PlayerPriceHistory(models.Model):
         return f"{self.player} - {self.platform} @ {self.fetched_at}: {self.price} {self.currency}"
 
 
-class PriceScrapeJob(models.Model):
-    id = models.AutoField(primary_key=True)
-    started_at = models.DateTimeField(default=timezone.now)
-    ended_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(
-        max_length=20, choices=[("running", "Running"), ("completed", "Completed"), ("failed", "Failed")]
-    )
-    total_targets = models.IntegerField(default=0)
-    success_count = models.IntegerField(default=0)
-    failure_count = models.IntegerField(default=0)
-    rate_limit_hits = models.IntegerField(default=0)
-    notes = models.TextField(null=True, blank=True)
-
-    class Meta:
-        db_table = "price_scrape_jobs"
-
-    def __str__(self):
-        return f"Job {self.id} - {self.status} ({self.success_count}/{self.total_targets})"
-
-
-class PriceScrapeFailure(models.Model):
-    id = models.AutoField(primary_key=True)
-    job = models.ForeignKey(PriceScrapeJob, on_delete=models.CASCADE, related_name="failures")
-    player_id = models.BigIntegerField()
-    reason = models.CharField(max_length=255)
-    http_status = models.IntegerField(null=True, blank=True)
-    payload = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        db_table = "price_scrape_failures"
-
-    def __str__(self):
-        return f"Job {self.job_id} - Player {self.player_id}: {self.reason}"
-
-
 class TradeWatch(models.Model):
     PENDING = "pending"
     SOLD = "sold"
@@ -350,22 +314,3 @@ class PlayerTier(models.Model):
 
     def __str__(self):
         return f"{self.player} - {self.tier} (Score: {self.hotness_score})"
-
-
-class SessionUsage(models.Model):
-    id = models.AutoField(primary_key=True)
-    session_id = models.CharField(max_length=100, unique=True)
-    requests_count = models.IntegerField(default=0)
-    last_used = models.DateTimeField(null=True, blank=True)
-    cooldown_until = models.DateTimeField(null=True, blank=True)
-    is_healthy = models.BooleanField(default=True)
-    created_at = models.DateTimeField(default=timezone.now)
-
-    class Meta:
-        db_table = "scraper_sessionusage"
-        indexes = [
-            models.Index(fields=["is_healthy", "cooldown_until"]),
-        ]
-
-    def __str__(self):
-        return f"Session {self.session_id} - Requests: {self.requests_count}"

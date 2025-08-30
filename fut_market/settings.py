@@ -223,7 +223,7 @@ class TierRouter:
         elif task in [
             "players.tasks.recalculate_player_tiers",
             "players.tasks.cleanup_expired_trades",
-            "players.metrics_tasks.update_metrics",
+            "players.tasks.update_metrics",
         ]:
             return {"queue": "maintenance"}
         return None
@@ -312,7 +312,7 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="0", hour="*/6"),
     },
     "update-metrics": {
-        "task": "players.metrics_tasks.update_metrics",
+        "task": "players.tasks.update_metrics",
         "schedule": 60.0,  # Every minute
     },
 }

@@ -253,6 +253,19 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
             f"Scraping {len(player_ids)} players in {tier} tier", extra={"tier": tier, "count": len(player_ids)}
         )
 
+        # Fetch all current prices for players in this batch
+        player_prices_dict = {}
+        player_prices = await sync_to_async(
+            lambda: list(
+                PlayerPrice.objects.filter(player_id__in=player_ids, platform=platform, current_price__gt=0)
+                .exclude(current_price__isnull=True)
+                .values("player_id", "current_price")
+            )
+        )()
+
+        for price_data in player_prices:
+            player_prices_dict[price_data["player_id"]] = price_data["current_price"]
+
         # Get active session
         def get_active_session():
             with connection.cursor() as cursor:
@@ -303,6 +316,13 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                             if not player or not player.resource_id:
                                 continue
 
+                            # Get player's last sold price from pre-fetched dict
+                            max_buy_filter = None
+                            if player_id in player_prices_dict:
+                                current_price = player_prices_dict[player_id]
+                                # Set max_buy to 115% of last sold price (15% over)
+                                max_buy_filter = int(current_price * Decimal("1.15"))
+
                             # Get adaptive delay
                             delay = await throttler.get_adjusted_delay(tier)
                             await asyncio.sleep(delay)
@@ -316,7 +336,9 @@ def scrape_tier_prices(self, tier: str, platform: str = "ps"):
                                     logger.warning("Circuit breaker opened during scraping, stopping")
                                     return
 
-                                params = PlayerSearchParameters(page=page, resource_id=player.resource_id)
+                                params = PlayerSearchParameters(
+                                    page=page, resource_id=player.resource_id, max_buy=max_buy_filter
+                                )
 
                                 # Execute with circuit breaker
                                 request_start = time.time()

@@ -1,8 +1,9 @@
 [project]
-name = "fifa-ultimate-team-server"
+name = "fut-market-bot"
 version = "0.1.0"
-description = "FIFA Ultimate Team web API server"
+description = "EA FC Market Bot - Scrape prices and automate buying/selling on EA FC"
 readme = "README.md"
+authors = [{name = "Saurav M Hiremath", email = "sauravhiremath@gmail.com"}]
 requires-python = ">=3.11"
 dependencies = [
     "django>=5.2.5",

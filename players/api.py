@@ -1,11 +1,12 @@
 """Players API endpoints using Django Ninja."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 
 from asgiref.sync import sync_to_async
 from django.db import transaction
+from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
@@ -136,7 +137,7 @@ async def get_player_prices(request, player_id: int, platform: Optional[str] = N
 async def get_price_history(request, player_id: int, platform: Optional[str] = None, days: int = 7):
     """Get price history for a player."""
     try:
-        since = datetime.now() - timedelta(days=days)
+        since = timezone.now() - timedelta(days=days)
 
         query = PlayerPriceHistory.objects.filter(player_id=player_id, fetched_at__gte=since)
 
@@ -162,7 +163,7 @@ async def get_player_price_series(request, player_id: int, platform: str = "ps",
         )()
 
         # Get price history
-        since = datetime.now() - timedelta(days=days)
+        since = timezone.now() - timedelta(days=days)
         history = await sync_to_async(
             lambda: list(
                 PlayerPriceHistory.objects.filter(player_id=player_id, platform=platform, fetched_at__gte=since)
@@ -192,7 +193,7 @@ async def get_price_stats(request):
     """Get price statistics and scraping health."""
     try:
         # Stale prices count (older than 1 hour)
-        one_hour_ago = datetime.now() - timedelta(hours=1)
+        one_hour_ago = timezone.now() - timedelta(hours=1)
         stale_count = await sync_to_async(lambda: PlayerPrice.objects.filter(last_updated__lt=one_hour_ago).count())()
 
         # Total prices tracked

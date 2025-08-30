@@ -1,11 +1,11 @@
 import asyncio
 import logging
-from datetime import datetime
 from enum import Enum
 from typing import Any, Callable, Dict, Optional
 
 import redis
 from django.conf import settings
+from django.utils import timezone
 
 from utils.logging_config import ErrorTracker
 from utils.metrics import PrometheusMetrics, RiskMetrics
@@ -44,7 +44,7 @@ class EACircuitBreaker:
         self.state = CircuitState.CLOSED
         self.failure_count = 0
         self.timeout_count = 0
-        self.last_failure_time: Optional[datetime] = None
+        self.last_failure_time: Optional[timezone] = None
         self.half_open_calls = 0
 
         # Track different error types
@@ -120,7 +120,7 @@ class EACircuitBreaker:
             if self.half_open_calls >= self.half_open_max_calls:
                 # Too many test calls, trip back to OPEN
                 self.state = CircuitState.OPEN
-                self.last_failure_time = datetime.now()
+                self.last_failure_time = timezone.now()
                 logger.warning("Circuit breaker returning to OPEN state after HALF_OPEN test failures")
                 raise CircuitBreakerOpen("Circuit breaker returned to OPEN after test failures")
             self.half_open_calls += 1
@@ -154,7 +154,7 @@ class EACircuitBreaker:
 
     def _on_failure(self, exception: Exception):
         """Handle failed call."""
-        self.last_failure_time = datetime.now()
+        self.last_failure_time = timezone.now()
 
         # Categorize the error
         error_str = str(exception).lower()
@@ -189,7 +189,7 @@ class EACircuitBreaker:
             return True
 
         backoff_duration = self._get_backoff_duration()
-        elapsed = (datetime.now() - self.last_failure_time).total_seconds()
+        elapsed = (timezone.now() - self.last_failure_time).total_seconds()
 
         return elapsed >= backoff_duration
 
@@ -199,7 +199,7 @@ class EACircuitBreaker:
             return 0
 
         backoff_duration = self._get_backoff_duration()
-        elapsed = (datetime.now() - self.last_failure_time).total_seconds()
+        elapsed = (timezone.now() - self.last_failure_time).total_seconds()
 
         return max(0, int(backoff_duration - elapsed))
 
@@ -225,7 +225,7 @@ class EACircuitBreaker:
     def manual_trip(self, reason: str = "Manual trip"):
         """Manually trip the circuit breaker."""
         self.state = CircuitState.OPEN
-        self.last_failure_time = datetime.now()
+        self.last_failure_time = timezone.now()
         logger.warning(f"Circuit breaker manually tripped: {reason}")
 
 
@@ -346,7 +346,7 @@ class MetricsBasedCircuitBreaker(EACircuitBreaker):
             # Sync local state with global
             if self.state != CircuitState.OPEN:
                 self.state = CircuitState.OPEN
-                self.last_failure_time = datetime.now()
+                self.last_failure_time = timezone.now()
             return True
 
         return self.state == CircuitState.OPEN

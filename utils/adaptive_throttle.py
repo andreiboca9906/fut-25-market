@@ -1,8 +1,8 @@
 import random
-from datetime import datetime
 
 import redis
 from django.conf import settings
+from django.utils import timezone
 
 from utils.metrics import MetricsCollector, RiskMonitor
 
@@ -41,7 +41,7 @@ class AdaptiveThrottler:
             self.adjustment_factor = max(self.adjustment_factor * 0.95, 0.5)
 
         # Store adjustment history
-        self.redis.hset("throttle:adjustments", datetime.now().isoformat(), self.adjustment_factor)
+        self.redis.hset("throttle:adjustments", timezone.now().isoformat(), self.adjustment_factor)
 
         return self.adjustment_factor
 

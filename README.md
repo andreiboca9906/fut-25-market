@@ -189,7 +189,7 @@ rm -f $PROMETHEUS_MULTIPROC_DIR/*.db  # Clean up old metrics
 source ./scripts/load-env.sh && uv run celery -A fut_market beat -l info
 
 # Run django server (separate terminal)
-./start-django-dev.sh
+./scripts/start-django-dev.sh
 ```
 
 ### Queue Schedule

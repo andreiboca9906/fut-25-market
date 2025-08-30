@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import random
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Dict, List, Optional
 
 import httpx
@@ -122,7 +122,7 @@ class PlayerDataService:
         if batch_for_db:
             await sync_to_async(Player.objects.bulk_upsert)(batch_for_db)
 
-        return {"total_players": len(all_players), "last_offset": offset, "fetch_date": datetime.now().isoformat()}
+        return {"total_players": len(all_players), "last_offset": offset, "fetch_date": timezone.now().isoformat()}
 
     async def fetch_player_names(self) -> Optional[Dict]:
         """Fetch player names from EA API."""

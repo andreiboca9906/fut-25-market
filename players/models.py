@@ -207,7 +207,9 @@ class PlayerPriceManager(models.Manager):
     def update_price(self, player_id: int, platform: str, price: float, currency: str = "COINS"):
         """Update or create price for a player."""
         return self.update_or_create(
-            player_id=player_id, platform=platform, defaults={"current_price": price, "currency": currency}
+            player_id=player_id,
+            platform=platform,
+            defaults={"current_price": price, "currency": currency, "last_updated": timezone.now()},
         )
 
 

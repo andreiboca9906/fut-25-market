@@ -389,7 +389,7 @@ wheels = [
 ]
 
 [[package]]
-name = "fifa-ultimate-team-server"
+name = "fut-market-bot"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

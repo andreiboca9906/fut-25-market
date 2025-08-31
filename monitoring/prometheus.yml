@@ -17,21 +17,3 @@ scrape_configs:
       - targets: ['host.docker.internal:8010']  # ['web:8000'] for docker
     metrics_path: '/metrics/'
     scrape_interval: 10s
-
-  # Celery worker metrics (if using celery-exporter)
-  - job_name: 'celery'
-    static_configs:
-      - targets: ['celery-exporter:9540']
-    scrape_interval: 30s
-
-  # PostgreSQL metrics (if using postgres-exporter)
-  - job_name: 'postgresql'
-    static_configs:
-      - targets: ['postgres-exporter:9187']
-    scrape_interval: 30s
-
-  # Redis metrics (if using redis-exporter)
-  - job_name: 'redis'
-    static_configs:
-      - targets: ['redis-exporter:9121']
-    scrape_interval: 30s

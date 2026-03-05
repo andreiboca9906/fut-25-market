@@ -1,7 +1,7 @@
 {
   "id": null,
-  "uid": "fut25-scraper",
-  "title": "EA FC 25 Scraper Monitoring",
+  "uid": "fut26-scraper",
+  "title": "EA FC 26 Scraper Monitoring",
   "timezone": "browser",
   "schemaVersion": 38,
   "version": 2,
@@ -18,7 +18,7 @@
       "type": "bargauge", 
       "targets": [
         {
-          "expr": "sum by (rating_range) (sum by (rating_range, pid) (fc25_total_players_by_rating) - sum by (rating_range, pid) (fc25_players_with_prices_by_rating))",
+          "expr": "sum by (rating_range) (sum by (rating_range, pid) (fc26_total_players_by_rating) - sum by (rating_range, pid) (fc26_players_with_prices_by_rating))",
           "legendFormat": "{{rating_range}}",
           "refId": "A"
         }
@@ -65,7 +65,7 @@
       "type": "bargauge",
       "targets": [
         {
-          "expr": "sum by (rating_range) (sum by (rating_range, pid) (fc25_players_with_prices_by_rating)) / sum by (rating_range) (sum by (rating_range, pid) (fc25_total_players_by_rating)) * 100",
+          "expr": "sum by (rating_range) (sum by (rating_range, pid) (fc26_players_with_prices_by_rating)) / sum by (rating_range) (sum by (rating_range, pid) (fc26_total_players_by_rating)) * 100",
           "legendFormat": "{{rating_range}}",
           "refId": "A"
         }
@@ -118,7 +118,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (tier, status) (sum by (tier, status, pid) (rate(fc25_scraper_requests_total[5m])))",
+          "expr": "sum by (tier, status) (sum by (tier, status, pid) (rate(fc26_scraper_requests_total[5m])))",
           "legendFormat": "{{tier}} - {{status}}",
           "refId": "A"
         }
@@ -136,12 +136,12 @@
       "type": "graph",
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (tier, le) (sum by (tier, le, pid) (rate(fc25_scraper_response_time_seconds_bucket[5m]))))",
+          "expr": "histogram_quantile(0.95, sum by (tier, le) (sum by (tier, le, pid) (rate(fc26_scraper_response_time_seconds_bucket[5m]))))",
           "legendFormat": "P95 - {{tier}}",
           "refId": "A"
         },
         {
-          "expr": "histogram_quantile(0.99, sum by (tier, le) (sum by (tier, le, pid) (rate(fc25_scraper_response_time_seconds_bucket[5m]))))",
+          "expr": "histogram_quantile(0.99, sum by (tier, le) (sum by (tier, le, pid) (rate(fc26_scraper_response_time_seconds_bucket[5m]))))",
           "legendFormat": "P99 - {{tier}}",
           "refId": "B"
         }
@@ -159,7 +159,7 @@
       "type": "graph",
       "targets": [
         {
-          "expr": "sum by (tier) (sum by (tier, status, pid) (rate(fc25_scraper_requests_total{status=\"success\"}[5m]))) / sum by (tier) (sum by (tier, status, pid) (rate(fc25_scraper_requests_total[5m]))) * 100",
+          "expr": "sum by (tier) (sum by (tier, status, pid) (rate(fc26_scraper_requests_total{status=\"success\"}[5m]))) / sum by (tier) (sum by (tier, status, pid) (rate(fc26_scraper_requests_total[5m]))) * 100",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -177,7 +177,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "sum(sum by (tier, pid) (fc25_scraper_active_tasks))",
+          "expr": "sum(sum by (tier, pid) (fc26_scraper_active_tasks))",
           "refId": "A"
         }
       ],
@@ -199,7 +199,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "sum(sum by (pid) (fc25_active_ea_sessions))",
+          "expr": "sum(sum by (pid) (fc26_active_ea_sessions))",
           "refId": "A"
         }
       ],
@@ -233,7 +233,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "sum(sum by (pid) (fc25_session_pool_healthy)) / sum(sum by (pid) (fc25_session_pool_size)) * 100",
+          "expr": "sum(sum by (pid) (fc26_session_pool_healthy)) / sum(sum by (pid) (fc26_session_pool_size)) * 100",
           "refId": "A"
         }
       ],
@@ -264,7 +264,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "sum(sum by (pid) (increase(fc25_scraper_rate_limits_total[1h])))",
+          "expr": "sum(sum by (pid) (increase(fc26_scraper_rate_limits_total[1h])))",
           "refId": "A"
         }
       ],
@@ -298,7 +298,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "sum(sum by (pid) (fc25_db_pool_active))",
+          "expr": "sum(sum by (pid) (fc26_db_pool_active))",
           "refId": "A"
         }
       ],
@@ -320,7 +320,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "sum(sum by (pid) (fc25_pending_trades))",
+          "expr": "sum(sum by (pid) (fc26_pending_trades))",
           "refId": "A"
         }
       ],
@@ -342,7 +342,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "sum by (tier, error_type) (sum by (tier, error_type, pid) (rate(fc25_scraper_errors_total[5m])))",
+          "expr": "sum by (tier, error_type) (sum by (tier, error_type, pid) (rate(fc26_scraper_errors_total[5m])))",
           "legendFormat": "{{tier}} - {{error_type}}",
           "refId": "A"
         }
@@ -424,7 +424,7 @@
       "type": "graph",
       "targets": [
         {
-          "expr": "sum by (queue_name) (sum by (queue_name, pid) (fc25_queue_depth))",
+          "expr": "sum by (queue_name) (sum by (queue_name, pid) (fc26_queue_depth))",
           "legendFormat": "{{queue_name}}",
           "refId": "A"
         }
@@ -442,7 +442,7 @@
       "type": "heatmap",
       "targets": [
         {
-          "expr": "sum by (tier) (sum by (tier, pid) (fc25_price_freshness_minutes))",
+          "expr": "sum by (tier) (sum by (tier, pid) (fc26_price_freshness_minutes))",
           "format": "time_series",
           "refId": "A"
         }
@@ -480,7 +480,7 @@
       "type": "stat",
       "targets": [
         {
-          "expr": "sum by (tier) (sum by (tier, pid) (fc25_circuit_breaker_status))",
+          "expr": "sum by (tier) (sum by (tier, pid) (fc26_circuit_breaker_status))",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -511,7 +511,7 @@
       "type": "bargauge",
       "targets": [
         {
-          "expr": "sum by (tier) (sum by (tier, pid) (fc25_stale_prices_count))",
+          "expr": "sum by (tier) (sum by (tier, pid) (fc26_stale_prices_count))",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -544,7 +544,7 @@
       "type": "piechart",
       "targets": [
         {
-          "expr": "sum by (tier) (sum by (tier, pid) (fc25_tier_player_count))",
+          "expr": "sum by (tier) (sum by (tier, pid) (fc26_tier_player_count))",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -566,7 +566,7 @@
       "type": "bargauge",
       "targets": [
         {
-          "expr": "sum by (worker_name) (sum by (worker_name, pid) (fc25_worker_utilization))",
+          "expr": "sum by (worker_name) (sum by (worker_name, pid) (fc26_worker_utilization))",
           "legendFormat": "{{worker_name}}",
           "refId": "A"
         }
@@ -602,7 +602,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "sum by (tier) (sum by (tier, pid) (fc25_stale_prices_count))",
+          "expr": "sum by (tier) (sum by (tier, pid) (fc26_stale_prices_count))",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -633,7 +633,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "sum(sum by (pid) (fc25_trade_completion_pressure)) * 100",
+          "expr": "sum(sum by (pid) (fc26_trade_completion_pressure)) * 100",
           "refId": "A"
         }
       ],
@@ -664,7 +664,7 @@
       "type": "graph",
       "targets": [
         {
-          "expr": "sum by (tier) (sum by (tier, pid) (rate(fc25_price_updates_total[5m])))",
+          "expr": "sum by (tier) (sum by (tier, pid) (rate(fc26_price_updates_total[5m])))",
           "legendFormat": "{{tier}}",
           "refId": "A"
         }
@@ -682,7 +682,7 @@
       "type": "graph",
       "targets": [
         {
-          "expr": "sum by (session_id) (sum by (session_id, pid) (rate(fc25_scraper_session_expirations_total[5m])))",
+          "expr": "sum by (session_id) (sum by (session_id, pid) (rate(fc26_scraper_session_expirations_total[5m])))",
           "legendFormat": "{{session_id}}",
           "refId": "A"
         }
@@ -700,7 +700,7 @@
       "type": "gauge",
       "targets": [
         {
-          "expr": "sum(sum by (pid) (fc25_db_pool_active))",
+          "expr": "sum(sum by (pid) (fc26_db_pool_active))",
           "refId": "A"
         }
       ],
@@ -753,7 +753,7 @@
       }
     ]
   },
-  "tags": ["scraper", "monitoring", "ea-fc25"],
+  "tags": ["scraper", "monitoring", "ea-fc26"],
   "style": "dark",
   "weekStart": ""
 }

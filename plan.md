@@ -1,4 +1,4 @@
-## EA FC 25 Market Price Scraper - Next Steps
+## EA FC 26 Market Price Scraper - Next Steps
 
 ### Overview
 All 5 phases of the anti-detection architecture have been completed:

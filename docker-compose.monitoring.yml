@@ -1,7 +1,7 @@
 services:
   prometheus:
     image: prom/prometheus:latest
-    container_name: fut25_prometheus
+    container_name: fut26_prometheus
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
       - ./monitoring/prometheus/rules.yml:/etc/prometheus/rules.yml
@@ -15,12 +15,12 @@ services:
     ports:
       - "9090:9090"
     networks:
-      - fut25_network
+      - fut26_network
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
-    container_name: fut25_grafana
+    container_name: fut26_grafana
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
@@ -32,7 +32,7 @@ services:
     ports:
       - "8040:3000"
     networks:
-      - fut25_network
+      - fut26_network
     restart: unless-stopped
     depends_on:
       - prometheus
@@ -42,6 +42,6 @@ volumes:
   grafana_data:
 
 networks:
-  fut25_network:
-    name: fut-25-market_fut25_network
+  fut26_network:
+    name: fut-26-market_fut26_network
     external: true

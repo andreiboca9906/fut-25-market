@@ -1,1 +1,1 @@
-"""Models for FIFA Ultimate Team data structures."""
+"""Models for EA Sports FC Ultimate Team data structures."""

@@ -23,70 +23,70 @@ multiprocess_mode = os.environ.get("PROMETHEUS_MULTIPROC_DIR") is not None
 
 # Performance Metrics
 request_counter = Counter(
-    "fc25_scraper_requests_total", "Total number of scraper requests", ["tier", "status", "session_id"]
+    "fc26_scraper_requests_total", "Total number of scraper requests", ["tier", "status", "session_id"]
 )
 
 response_time_histogram = Histogram(
-    "fc25_scraper_response_time_seconds",
+    "fc26_scraper_response_time_seconds",
     "Response time in seconds",
     ["tier"],
     buckets=(0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
 )
 
-active_scrapers = Gauge("fc25_scraper_active_tasks", "Number of active scraper tasks", ["tier"])
+active_scrapers = Gauge("fc26_scraper_active_tasks", "Number of active scraper tasks", ["tier"])
 
 # Risk & Error Metrics
-rate_limit_counter = Counter("fc25_scraper_rate_limits_total", "Total rate limit hits", ["session_id"])
+rate_limit_counter = Counter("fc26_scraper_rate_limits_total", "Total rate limit hits", ["session_id"])
 
 session_expiration_counter = Counter(
-    "fc25_scraper_session_expirations_total", "Total session expirations", ["session_id"]
+    "fc26_scraper_session_expirations_total", "Total session expirations", ["session_id"]
 )
 
-error_counter = Counter("fc25_scraper_errors_total", "Total scraper errors", ["tier", "error_type", "session_id"])
+error_counter = Counter("fc26_scraper_errors_total", "Total scraper errors", ["tier", "error_type", "session_id"])
 
-circuit_breaker_gauge = Gauge("fc25_circuit_breaker_status", "Circuit breaker status (0=closed, 1=open)", ["tier"])
+circuit_breaker_gauge = Gauge("fc26_circuit_breaker_status", "Circuit breaker status (0=closed, 1=open)", ["tier"])
 
 # Data Quality Metrics
-price_freshness_gauge = Gauge("fc25_price_freshness_minutes", "Average price age in minutes", ["tier"])
+price_freshness_gauge = Gauge("fc26_price_freshness_minutes", "Average price age in minutes", ["tier"])
 
-trade_completion_pressure_gauge = Gauge("fc25_trade_completion_pressure", "Ratio of sold trades to pending trades")
+trade_completion_pressure_gauge = Gauge("fc26_trade_completion_pressure", "Ratio of sold trades to pending trades")
 
-missing_prices_gauge = Gauge("fc25_missing_prices_count", "Number of players without prices")
+missing_prices_gauge = Gauge("fc26_missing_prices_count", "Number of players without prices")
 
 players_with_prices_by_rating_gauge = Gauge(
-    "fc25_players_with_prices_by_rating", "Number of players with prices by rating range", ["rating_range"]
+    "fc26_players_with_prices_by_rating", "Number of players with prices by rating range", ["rating_range"]
 )
 
 total_players_by_rating_gauge = Gauge(
-    "fc25_total_players_by_rating", "Total number of players by rating range", ["rating_range"]
+    "fc26_total_players_by_rating", "Total number of players by rating range", ["rating_range"]
 )
 
 players_with_prices_ratio_gauge = Gauge(
-    "fc25_players_with_prices_ratio", "Ratio of players with prices to total players by rating range", ["rating_range"]
+    "fc26_players_with_prices_ratio", "Ratio of players with prices to total players by rating range", ["rating_range"]
 )
 
-stale_prices_gauge = Gauge("fc25_stale_prices_count", "Number of prices older than 2 hours", ["tier"])
+stale_prices_gauge = Gauge("fc26_stale_prices_count", "Number of prices older than 2 hours", ["tier"])
 
 # System Health Metrics
-active_sessions_gauge = Gauge("fc25_active_ea_sessions", "Number of active EA sessions")
+active_sessions_gauge = Gauge("fc26_active_ea_sessions", "Number of active EA sessions")
 
-queue_depth_gauge = Gauge("fc25_queue_depth", "Number of tasks in queue", ["queue_name"])
+queue_depth_gauge = Gauge("fc26_queue_depth", "Number of tasks in queue", ["queue_name"])
 
-worker_utilization_gauge = Gauge("fc25_worker_utilization", "Worker utilization percentage", ["worker_name"])
+worker_utilization_gauge = Gauge("fc26_worker_utilization", "Worker utilization percentage", ["worker_name"])
 
 # Additional useful metrics
-db_pool_gauge = Gauge("fc25_db_pool_active", "Active database connections")
+db_pool_gauge = Gauge("fc26_db_pool_active", "Active database connections")
 
-pending_trades_gauge = Gauge("fc25_pending_trades", "Number of pending trades")
+pending_trades_gauge = Gauge("fc26_pending_trades", "Number of pending trades")
 
-tier_player_count_gauge = Gauge("fc25_tier_player_count", "Number of players per tier", ["tier"])
+tier_player_count_gauge = Gauge("fc26_tier_player_count", "Number of players per tier", ["tier"])
 
-price_updates_counter = Counter("fc25_price_updates_total", "Total price updates", ["tier"])
+price_updates_counter = Counter("fc26_price_updates_total", "Total price updates", ["tier"])
 
 # Session pool metrics
-session_pool_size_gauge = Gauge("fc25_session_pool_size", "Total session pool size")
+session_pool_size_gauge = Gauge("fc26_session_pool_size", "Total session pool size")
 
-session_pool_healthy_gauge = Gauge("fc25_session_pool_healthy", "Number of healthy sessions")
+session_pool_healthy_gauge = Gauge("fc26_session_pool_healthy", "Number of healthy sessions")
 
 
 class PrometheusMetrics:

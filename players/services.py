@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 class PlayerDataService:
     """Service for fetching and managing player data."""
 
-    FUT_API_URL = "https://utas.mob.v4.prd.futc-ext.gcp.ea.com/ut/game/fc25/defid"
-    EA_PLAYERS_API_URL = "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/content/25E4CDAE-799B-45BE-B257-667FDCDE8044/2025/fut/items/web/players.json"
+    FUT_API_URL = "https://utas.mob.v4.prd.futc-ext.gcp.ea.com/ut/game/fc26/defid"
+    EA_PLAYERS_API_URL = "https://www.ea.com/ea-sports-fc/ultimate-team/web-app/content/25E4CDAE-799B-45BE-B257-667FDCDE8044/2026/fut/items/web/players.json"
 
     RATE_LIMIT = 50  # requests per minute
     BATCH_SIZE = 200  # max items per request

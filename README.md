@@ -1,6 +1,6 @@
-# FIFA Ultimate Team Server
+# EA Sports FC 26 Ultimate Team Server
 
-A Python web server providing RESTful API access to EA's FIFA Ultimate Team web services.
+A Python web server providing RESTful API access to EA Sports FC 26 Ultimate Team web services.
 
 ## Features
 
@@ -20,10 +20,23 @@ uv sync
 
 ## Database Setup
 
-This project requires PostgreSQL. Start the database using Docker Compose:
+By default, local development uses SQLite (no Docker and no PostgreSQL required).
 
 ```bash
-docker-compose up -d
+# Optional: choose a custom SQLite file path
+export DB_ENGINE=sqlite
+export SQLITE_PATH=./db.sqlite3
+```
+
+If you prefer PostgreSQL locally:
+
+```bash
+export DB_ENGINE=postgres
+export DB_NAME=eafc26
+export DB_USER=postgres
+export DB_PASSWORD=postgres
+export DB_HOST=localhost
+export DB_PORT=5432
 ```
 
 Run database migrations:
@@ -162,7 +175,7 @@ The session ID can be obtained through the login process or external authenticat
 ### Local Testing
 ```bash
 # Start Redis
-docker-compose up -d redis
+redis-server
 
 # IMPORTANT: Set up Prometheus multiprocess directory for metrics
 export PROMETHEUS_MULTIPROC_DIR="/tmp/prometheus_multiproc"
@@ -203,11 +216,12 @@ source ./scripts/load-env.sh && uv run celery -A fut_market beat -l info
 
 ### Production Deployment
 ```bash
-# Start all services with Docker Compose
-docker-compose up -d
-
-# Or manually on VM:
+# Start Redis
 redis-server &
+
+# If running with PostgreSQL instead of SQLite:
+# brew services start postgresql@16  # macOS
+# sudo systemctl start postgresql    # Linux
 
 # Start all queue workers
 celery -A fut_market worker -l info -Q tier_hot -n worker.hot@%h --detach
@@ -247,3 +261,4 @@ uv run ruff format .
 - `core/` - Shared models and utilities
 - `fut_market/` - Django project settings
 - `manage.py` - Django management command entry point
+# fut

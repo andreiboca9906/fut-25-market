@@ -1,4 +1,4 @@
-"""Custom exceptions for FIFA Ultimate Team API."""
+"""Custom exceptions for EA Sports FC Ultimate Team API."""
 
 
 class FutError(Exception):

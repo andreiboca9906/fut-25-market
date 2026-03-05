@@ -123,7 +123,7 @@ async def test_verify_pending_trades():
 
 async def main():
     """Run all tests."""
-    print("Testing EA FC 25 Trade Status System")
+    print("Testing EA FC 26 Trade Status System")
     print("=" * 40)
 
     await test_trade_status_api()

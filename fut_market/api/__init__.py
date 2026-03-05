@@ -8,7 +8,7 @@ from market.api import router as market_router
 from players.api import router as players_router
 
 api = NinjaAPI(
-    title="FIFA Ultimate Team API", version="2.0.0", description="Django-based FIFA Ultimate Team web API server"
+    title="EA Sports FC Ultimate Team API", version="2.0.0", description="Django-based EA Sports FC Ultimate Team web API server"
 )
 
 # Register routers

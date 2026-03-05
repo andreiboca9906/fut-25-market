@@ -14,6 +14,6 @@ scrape_configs:
   # Django application metrics
   - job_name: 'django'
     static_configs:
-      - targets: ['host.docker.internal:8010']  # ['web:8000'] for docker
+      - targets: ['localhost:8010']
     metrics_path: '/metrics/'
     scrape_interval: 10s

@@ -1,12 +1,12 @@
 services:
   postgres-local:
     image: timescale/timescaledb:latest-pg17
-    container_name: postgres-local-eafc25
+    container_name: postgres-local-eafc26
     user: postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: eafc25
+      POSTGRES_DB: eafc26
     ports:
       - "5432:5432"
     command: -c fsync=off -c max_prepared_transactions=10 -c shared_buffers=2500MB -c max_connections=1000 -c max_locks_per_transaction=256
@@ -16,9 +16,9 @@ services:
       timeout: 2s
       retries: 5
     volumes:
-      - eafc25-local-pg-volume:/var/lib/postgresql-local/data
+      - eafc26-local-pg-volume:/var/lib/postgresql-local/data
     networks:
-      - fut25_network
+      - fut26_network
 
   postgres-mcp:
     image: crystaldba/postgres-mcp:latest
@@ -28,23 +28,21 @@ services:
       - "9432:8000"
     command: --access-mode=unrestricted --transport=sse
     environment:
-      - DATABASE_URI=postgresql://postgres:postgres@localhost:5432/eafc25
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - DATABASE_URI=postgresql://postgres:postgres@localhost:5432/eafc26
     networks:
-      - fut25_network
+      - fut26_network
 
   redis:
     image: redis:7
-    container_name: redis-eafc25
+    container_name: redis-eafc26
     ports:
       - "6379:6379"
     networks:
-      - fut25_network
+      - fut26_network
 
   celery-worker:
     build: .
-    container_name: celery-worker-eafc25
+    container_name: celery-worker-eafc26
     command: uv run celery -A fut_market worker -l info -Q prices
     depends_on:
       - redis
@@ -53,16 +51,16 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DB_HOST=postgres-local
-      - DB_NAME=eafc25
+      - DB_NAME=eafc26
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
     networks:
-      - fut25_network
+      - fut26_network
 
   celery-beat:
     build: .
-    container_name: celery-beat-eafc25
+    container_name: celery-beat-eafc26
     command: uv run celery -A fut_market beat -l info
     depends_on:
       - redis
@@ -71,16 +69,16 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1
       - DB_HOST=postgres-local
-      - DB_NAME=eafc25
+      - DB_NAME=eafc26
       - DB_USER=postgres
       - DB_PASSWORD=postgres
       - DB_PORT=5432
     networks:
-      - fut25_network
+      - fut26_network
 
 volumes:
-  eafc25-local-pg-volume:
+  eafc26-local-pg-volume:
 
 networks:
-  fut25_network:
+  fut26_network:
     driver: bridge

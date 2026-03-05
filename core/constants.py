@@ -1,11 +1,11 @@
-"""Constants and enums for FIFA Ultimate Team API."""
+"""Constants and enums for EA Sports FC Ultimate Team API."""
 
 from datetime import timedelta
 from enum import Enum
 
 
 class Platform(Enum):
-    """Gaming platforms supported by FIFA Ultimate Team."""
+    """Gaming platforms supported by EA Sports FC Ultimate Team."""
 
     PS4 = "ps4"
     PS5 = "ps5"
@@ -15,10 +15,10 @@ class Platform(Enum):
 
 
 class AppVersion(Enum):
-    """Supported app versions for FIFA Ultimate Team."""
+    """Supported app versions for EA Sports FC Ultimate Team."""
 
-    WEB_APP = "25.1.0"
-    COMPANION_APP = "25.1.0"
+    WEB_APP = "26.1.0"
+    COMPANION_APP = "26.1.0"
 
 
 class AuctionDuration(Enum):
@@ -145,7 +145,7 @@ class ClubInfoType(Enum):
 
 
 API_ENDPOINTS = {
-    "base_url": "https://utas.mob.v4.prd.futc-ext.gcp.ea.com/ut/game/fc25",
+    "base_url": "https://utas.mob.v4.prd.futc-ext.gcp.ea.com/ut/game/fc26",
     "login": "/user/auth",
     "session": "/user/sessionInfo",
     "transfermarket": "/transfermarket",

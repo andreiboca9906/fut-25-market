@@ -1,4 +1,4 @@
-# EA FC 25 Market Price Scraper - Features
+# EA FC 26 Market Price Scraper - Features
 
 ## Rate Limits & Timeouts Configuration
 

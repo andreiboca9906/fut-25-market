@@ -51,7 +51,7 @@ class TwoFactorCodeProvider(Protocol):
 
 
 class FutClient:
-    """FIFA Ultimate Team API client."""
+    """EA Sports FC Ultimate Team API client."""
 
     def __init__(
         self, cookie_jar: Optional[httpx.Cookies] = None, x_ut_sid: Optional[str] = None, rotate_ua: bool = True

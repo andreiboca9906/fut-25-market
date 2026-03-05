@@ -117,7 +117,7 @@ async def test_tier_distribution():
 
 async def main():
     """Run all tests."""
-    print("Testing EA FC 25 Priority System")
+    print("Testing EA FC 26 Priority System")
     print("=" * 40)
 
     await test_hotness_calculator()

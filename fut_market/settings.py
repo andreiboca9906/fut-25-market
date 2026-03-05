@@ -26,7 +26,7 @@ SECRET_KEY = "django-insecure-14x_8$l92&ylccm@#1u50@%t8a9d*gu=*f35p@-go2o#!sux)t
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1", "host.docker.internal", "0.0.0.0"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "0.0.0.0"]
 
 
 # Application definition
@@ -81,19 +81,32 @@ WSGI_APPLICATION = "fut_market.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME", "eafc25"),
-        "USER": os.getenv("DB_USER", "postgres"),
-        "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
-        "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-        "TEST": {
-            "NAME": "test_eafc25",
-        },
+DB_ENGINE = os.getenv("DB_ENGINE", "sqlite").lower()
+
+if DB_ENGINE == "sqlite":
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": os.getenv("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+            "TEST": {
+                "NAME": os.getenv("TEST_SQLITE_PATH", BASE_DIR / "test_db.sqlite3"),
+            },
+        }
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME", "eafc26"),
+            "USER": os.getenv("DB_USER", "postgres"),
+            "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
+            "HOST": os.getenv("DB_HOST", "localhost"),
+            "PORT": os.getenv("DB_PORT", "5432"),
+            "TEST": {
+                "NAME": os.getenv("TEST_DB_NAME", "test_eafc26"),
+            },
+        }
+    }
 
 
 # Password validation
